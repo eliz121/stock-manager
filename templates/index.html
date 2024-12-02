@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Compra de Acciones</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Mensajes flash de error o éxito -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="alert alert-warning" role="alert">
+            {{ messages[0] }}
+        </div>
+        {% endif %}
+        {% endwith %}
+        
+        <h2>Registrar Compra de Acciones</h2>
+        <form method="POST" action="/">
+            <!-- Campo para fecha de compra -->
+            <div class="form-group">
+                <label for="fecha_compra">Fecha de Compra:</label>
+                <input type="date" class="form-control" id="fecha_compra" name="fecha_compra" required>
+            </div>
+            
+            <!-- Campo para autocompletado de empresa -->
+            <div class="form-group">
+                <label for="empresa">Empresa:</label>
+                <input type="text" class="form-control" id="empresa" name="empresa" placeholder="Escribe el símbolo de la empresa" required autocomplete="off">
+                <ul id="sugerencias" class="list-group mt-2" style="display: none;"></ul>
+            </div>
+
+            <!-- Campo para cantidad de acciones -->
+            <div class="form-group">
+                <label for="cantidad_acciones">Cantidad de Acciones:</label>
+                <input type="number" class="form-control" id="cantidad_acciones" name="cantidad_acciones" required>
+            </div>
+
+            <!-- Campo para valor de compra -->
+            <div class="form-group">
+                <label for="valor_compra">Valor de Compra por Acción ($):</label>
+                <input type="number" step="0.01" class="form-control" id="valor_compra" name="valor_compra" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Registrar Compra</button>
+        </form>
+
+        <!-- Resultados de la compra -->
+        {% if fecha_compra %}
+            <h3 class="mt-5">Resultados de la Compra</h3>
+            <p><strong>Fecha de Compra:</strong> {{ fecha_compra }}</p>
+            <p><strong>Cantidad de Acciones:</strong> {{ cantidad_acciones }}</p>
+            <p><strong>Valor de Compra por Acción:</strong> ${{ valor_compra }}</p>
+            <p><strong>Precio Actual de la Acción:</strong> ${{ precio_actual }}</p>
+            <p><strong>Valor Total de la Compra:</strong> ${{ valor_total }}</p>
+            <p><strong>Valor Actual de las Acciones:</strong> ${{ valor_actual }}</p>
+            <p><strong>Ganancia/Pérdida:</strong> ${{ ganancia_perdida }}</p>
+            <p><strong>Porcentaje de Ganancia/Pérdida:</strong> {{ porcentaje }}%</p>
+        {% endif %}
+
+        <h3 class="mt-5">Historial de Compras</h3>
+        {% if historial %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Fecha de Compra</th>
+                    <th>Empresa (Símbolo)</th>
+                    <th>Cantidad de Acciones</th>
+                    <th>Valor de Compra ($)</th>
+                    <th>Precio Actual ($)</th>
+                    <th>Valor Total ($)</th>
+                    <th>Valor Actual ($)</th>
+                    <th>Ganancia/Pérdida ($)</th>
+                    <th>Porcentaje (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for compra in historial %}
+                <tr>
+                    <td>{{ compra.fecha_compra }}</td>
+                    <td>{{ compra.symbol }}</td>
+                    <td>{{ compra.cantidad_acciones }}</td>
+                    <td>${{ compra.valor_compra }}</td>
+                    <td>${{ compra.precio_actual }}</td>
+                    <td>${{ compra.valor_total }}</td>
+                    <td>${{ compra.valor_actual }}</td>
+                    <td>${{ compra.ganancia_perdida }}</td>
+                    <td>{{ compra.porcentaje }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No se han registrado compras aún.</p>
+        {% endif %}
+
+    </div>
+
+    <script>
+        const inputEmpresa = document.getElementById("empresa");
+        const sugerenciasList = document.getElementById("sugerencias");
+
+        inputEmpresa.addEventListener("input", function() {
+            const term = inputEmpresa.value;
+
+            if (term.length > 2) {  // Se recomienda iniciar la búsqueda con al menos 3 letras
+                fetch(`/buscar_simbolo?term=${term}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        sugerenciasList.innerHTML = '';
+                        if (data.simbolos.length > 0) {
+                            data.simbolos.forEach(simbolo => {
+                                const li = document.createElement("li");
+                                li.classList.add("list-group-item");
+                                li.textContent = `${simbolo.nombre} (${simbolo.symbol})`;
+                                li.addEventListener("click", function() {
+                                    inputEmpresa.value = simbolo.symbol;
+                                    sugerenciasList.style.display = 'none';
+                                    actualizarPrecio(simbolo.symbol);  // Consulta solo al seleccionar
+                                });
+                                sugerenciasList.appendChild(li);
+                            });
+                            sugerenciasList.style.display = 'block';
+                        } else {
+                            sugerenciasList.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error al obtener símbolos:", error);
+                        sugerenciasList.style.display = 'none';
+                    });
+            } else {
+                sugerenciasList.style.display = 'none';
+            }
+        });
+
+        function actualizarPrecio(symbol) {
+            fetch(`/precio_actual?symbol=${symbol}`)
+                .then(response => response.json())
+                .then(data => {
+                    const precio = data.precio_actual || "Precio no disponible";
+                    document.getElementById("valor_compra").value = precio;
+                })
+                .catch(error => {
+                    console.error("Error al obtener el precio:", error);
+                    document.getElementById("valor_compra").value = "Error al obtener precio";
+                });
+        }
+    </script>
+
+    <!-- Incluir Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
