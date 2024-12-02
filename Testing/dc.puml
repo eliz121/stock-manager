@@ -1,0 +1,8 @@
+@startuml diagramName
+component "api.py" as Backend
+component "index.html" as Template
+component "style.css" as Styles
+
+Backend --> Template
+Template --> Styles
+@enduml
