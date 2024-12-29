@@ -151,6 +151,49 @@
         }
     </script>
 
+    <script>
+    document.querySelector("form").addEventListener("submit", function (event) {
+    // Obtener los valores de los campos
+    const fechaCompra = document.getElementById("fecha_compra").value;
+    const empresa = document.getElementById("empresa").value.trim();
+    const cantidadAcciones = document.getElementById("cantidad_acciones").value;
+    const valorCompra = document.getElementById("valor_compra").value;
+
+    let isValid = true;
+    let errorMessage = "";
+
+    // Validar fecha de compra
+    if (!fechaCompra) {
+        isValid = false;
+        errorMessage += "La fecha de compra es obligatoria.\n";
+    }
+
+    // Validar empresa
+    if (empresa.length < 1) {
+        isValid = false;
+        errorMessage += "La empresa debe contener al menos 1 caracter.\n";
+    }
+
+    // Validar cantidad de acciones
+    if (isNaN(cantidadAcciones) || cantidadAcciones <= 0) {
+        isValid = false;
+        errorMessage += "La cantidad de acciones debe ser un número mayor a 0.\n";
+    }
+
+    // Validar valor de compra
+    if (isNaN(valorCompra) || valorCompra <= 0) {
+        isValid = false;
+        errorMessage += "El valor de compra por acción debe ser un número mayor a 0.\n";
+    }
+
+    // Si hay errores, prevenir el envío del formulario y mostrar mensajes
+    if (!isValid) {
+        event.preventDefault();
+        alert(errorMessage);
+    }
+  });
+</script>
+
     <!-- Incluir Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
