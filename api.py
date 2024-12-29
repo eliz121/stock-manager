@@ -144,7 +144,7 @@ def precio_actual():
 def buscar_empresa():
     query = request.args.get("q")  # Obtener la consulta de la búsqueda
     if query:
-        API_KEY = "1DomrXlMKxYD26M8CundrQBaInhTMU8S"
+        API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")  # Acceder a la API key
         API_URL = "https://financialmodelingprep.com/api/v3/search"
         try:
             # Realizar la solicitud a la API de Financial Modeling Prep
