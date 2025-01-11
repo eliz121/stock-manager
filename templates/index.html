@@ -63,40 +63,45 @@
 
         <h3 class="mt-5">Historial de Compras</h3>
         {% if historial %}
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'asc')">Ordenar por Nombre (A-Z)</button>
+                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'desc')">Ordenar por Nombre (Z-A)</button>
+                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'asc')">Ordenar por Ganancia/Pérdida ($ Asc)</button>
+                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'desc')">Ordenar por Ganancia/Pérdida ($ Desc)</button>
+            </div>
         <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Fecha de Compra</th>
-                    <th>Empresa (Símbolo)</th>
-                    <th>Cantidad de Acciones</th>
-                    <th>Valor de Compra ($)</th>
-                    <th>Precio Actual ($)</th>
-                    <th>Valor Total ($)</th>
-                    <th>Valor Actual ($)</th>
-                    <th>Ganancia/Pérdida ($)</th>
-                    <th>Porcentaje (%)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for compra in historial %}
-                <tr>
-                    <td>{{ compra.fecha_compra }}</td>
-                    <td>{{ compra.symbol }}</td>
-                    <td>{{ compra.cantidad_acciones }}</td>
-                    <td>${{ compra.valor_compra }}</td>
-                    <td>${{ compra.precio_actual }}</td>
-                    <td>${{ compra.valor_total }}</td>
-                    <td>${{ compra.valor_actual }}</td>
-                    <td>${{ compra.ganancia_perdida }}</td>
-                    <td>{{ compra.porcentaje }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
+        <thead>
+        <tr>
+            <th>Fecha de Compra</th>
+            <th>Empresa (Símbolo)</th>
+            <th>Cantidad de Acciones</th>
+            <th>Valor de Compra ($)</th>
+            <th>Precio Actual ($)</th>
+            <th>Valor Total ($)</th>
+            <th>Valor Actual ($)</th>
+            <th>Ganancia/Pérdida ($)</th>
+            <th>Porcentaje (%)</th>
+        </tr>
+       </thead>
+       <tbody id="tabla-historial">
+        {% for compra in historial %}
+        <tr>
+            <td>{{ compra.fecha_compra }}</td>
+            <td>{{ compra.symbol }}</td>
+            <td>{{ compra.cantidad_acciones }}</td>
+            <td>${{ compra.valor_compra }}</td>
+            <td>${{ compra.precio_actual }}</td>
+            <td>${{ compra.valor_total }}</td>
+            <td>${{ compra.valor_actual }}</td>
+            <td>${{ compra.ganancia_perdida }}</td>
+            <td>{{ compra.porcentaje }}%</td>
+        </tr>
+        {% endfor %}
+        </tbody>
         </table>
         {% else %}
-            <p>No se han registrado compras aún.</p>
+         <p>No se han registrado compras aún.</p>
         {% endif %}
-
     </div>
 
     <script>
@@ -106,7 +111,7 @@
         inputEmpresa.addEventListener("input", function() {
             const term = inputEmpresa.value;
 
-            if (term.length > 2) {  // Se recomienda iniciar la búsqueda con al menos 3 letras
+            if (term.length > 1) {  // Se recomienda iniciar la búsqueda
                 fetch(`/buscar_simbolo?term=${term}`)
                     .then(response => response.json())
                     .then(data => {
@@ -192,6 +197,16 @@
         alert(errorMessage);
     }
   });
+</script>
+
+<script>
+    function ordenarHistorial(criterio, direccion) {
+        // Redirige al servidor con los parámetros de ordenamiento
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('ordenar_por', criterio);
+        urlParams.set('direccion', direccion);
+        window.location.search = urlParams.toString(); // Recarga la página con los parámetros
+    }
 </script>
 
     <!-- Incluir Bootstrap JS -->

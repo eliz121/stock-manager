@@ -62,11 +62,30 @@ def obtener_precio_actual(symbol):
     conn.close()
     return None 
 
-# Obtener el historial de compras desde la base de datos
-def obtener_historial_compras():
+def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc"):
+    # Validar que el campo y la dirección sean válidos para evitar inyecciones SQL
+    campos_validos = ["fecha_compra", "symbol", "cantidad_acciones", "valor_compra", 
+                      "precio_actual", "valor_total", "valor_actual", 
+                      "ganancia_perdida", "porcentaje"]
+    direcciones_validas = ["asc", "desc"]
+
+    if orden_campo not in campos_validos:
+        orden_campo = "fecha_compra"
+    if orden_direccion not in direcciones_validas:
+        orden_direccion = "asc"
+
+    # Conexión a la base de datos
     conn = sqlite3.connect("precios.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, valor_total, valor_actual, ganancia_perdida, porcentaje FROM historial_compras")
+
+    # Construir la consulta dinámica con los parámetros validados
+    query = f"""
+    SELECT fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, 
+           valor_total, valor_actual, ganancia_perdida, porcentaje
+    FROM historial_compras
+    ORDER BY {orden_campo} {orden_direccion.upper()}
+    """
+    cursor.execute(query)
     historial = cursor.fetchall()
     conn.close()
 
@@ -87,9 +106,14 @@ def obtener_historial_compras():
     ]
     return historial_compras
 
+
 # Ruta principal para el formulario y el historial de compras
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    # Capturar los parámetros de orden del query string
+    orden_campo = request.args.get("orden_campo", "fecha_compra")
+    orden_direccion = request.args.get("orden_direccion", "asc")
+
     if request.method == "POST":
         fecha_compra = request.form.get("fecha_compra")
         symbol = request.form.get("empresa")
@@ -99,15 +123,15 @@ def home():
             
         if cantidad_acciones <= 0:
             flash("Error: La cantidad no es válida.")
-            return render_template("index.html", historial=obtener_historial_compras())
+            return render_template("index.html", historial=obtener_historial_compras(orden_campo, orden_direccion))
 
         if valor_compra <= 0:
             flash("Error: El valor de compra no es válido.")
-            return render_template("index.html", historial=obtener_historial_compras())
+            return render_template("index.html", historial=obtener_historial_compras(orden_campo, orden_direccion))
         
         if precio_actual is None:
             flash("Error: El símbolo de la empresa no es válido o no se pudo obtener el precio actual.")
-            return render_template("index.html", historial=obtener_historial_compras())
+            return render_template("index.html", historial=obtener_historial_compras(orden_campo, orden_direccion))
 
         valor_total = round(cantidad_acciones * valor_compra, 2)
         valor_actual = round(cantidad_acciones * precio_actual, 2)
@@ -126,7 +150,10 @@ def home():
         conn.commit()
         conn.close()
 
-    return render_template("index.html", historial=obtener_historial_compras())
+    # Renderizar el historial con ordenamiento
+    historial = obtener_historial_compras(orden_campo, orden_direccion)
+    return render_template("index.html", historial=historial)
+
 
 # Ruta para obtener el precio actual de una acción en función de su símbolo
 @app.route('/precio_actual', methods=['GET'])
