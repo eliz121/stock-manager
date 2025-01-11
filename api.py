@@ -107,53 +107,89 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc")
     return historial_compras
 
 
-# Ruta principal para el formulario y el historial de compras
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    # Capturar los parámetros de orden del query string
-    orden_campo = request.args.get("orden_campo", "fecha_compra")
-    orden_direccion = request.args.get("orden_direccion", "asc")
-
+    # Capturar los parámetros de ordenamiento correctos
+    ordenar_por = request.args.get("ordenar_por", "fecha_compra")
+    direccion = request.args.get("direccion", "asc")
+    
+    # Mapear los criterios de ordenamiento del frontend al backend
+    criterios_mapping = {
+        "nombre": "symbol",
+        "ganancia": "ganancia_perdida",
+        "fecha": "fecha_compra"
+    }
+    
+    # Convertir el criterio del frontend al nombre de columna correcto
+    orden_campo = criterios_mapping.get(ordenar_por, "fecha_compra")
+    
     if request.method == "POST":
-        fecha_compra = request.form.get("fecha_compra")
-        symbol = request.form.get("empresa")
-        cantidad_acciones = int(request.form.get("cantidad_acciones"))
-        valor_compra = float(request.form.get("valor_compra"))
-        precio_actual = obtener_precio_actual(symbol)
+        try:
+            fecha_compra = request.form.get("fecha_compra")
+            symbol = request.form.get("empresa")
+            cantidad_acciones = int(request.form.get("cantidad_acciones"))
+            valor_compra = float(request.form.get("valor_compra"))
             
-        if cantidad_acciones <= 0:
-            flash("Error: La cantidad no es válida.")
-            return render_template("index.html", historial=obtener_historial_compras(orden_campo, orden_direccion))
+            # Validaciones
+            if not all([fecha_compra, symbol, cantidad_acciones, valor_compra]):
+                flash("Error: Todos los campos son obligatorios.")
+                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
+            
+            if cantidad_acciones <= 0:
+                flash("Error: La cantidad no es válida.")
+                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
 
-        if valor_compra <= 0:
-            flash("Error: El valor de compra no es válido.")
-            return render_template("index.html", historial=obtener_historial_compras(orden_campo, orden_direccion))
-        
-        if precio_actual is None:
-            flash("Error: El símbolo de la empresa no es válido o no se pudo obtener el precio actual.")
-            return render_template("index.html", historial=obtener_historial_compras(orden_campo, orden_direccion))
+            if valor_compra <= 0:
+                flash("Error: El valor de compra no es válido.")
+                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
+            
+            # Obtener precio actual
+            precio_actual = obtener_precio_actual(symbol)
+            if precio_actual is None:
+                flash("Error: El símbolo de la empresa no es válido o no se pudo obtener el precio actual.")
+                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
 
-        valor_total = round(cantidad_acciones * valor_compra, 2)
-        valor_actual = round(cantidad_acciones * precio_actual, 2)
-        ganancia_perdida = round(valor_actual - valor_total, 2)
-        porcentaje = round((ganancia_perdida / valor_total) * 100, 2)
+            # Cálculos
+            valor_total = round(cantidad_acciones * valor_compra, 2)
+            valor_actual = round(cantidad_acciones * precio_actual, 2)
+            ganancia_perdida = round(valor_actual - valor_total, 2)
+            porcentaje = round((ganancia_perdida / valor_total) * 100, 2)
 
-        # Guardar el registro en la base de datos
-        conn = sqlite3.connect("precios.db")
-        cursor = conn.cursor()
-        cursor.execute(""" 
-            INSERT INTO historial_compras (fecha_compra, symbol, cantidad_acciones, valor_compra, 
-                precio_actual, valor_total, valor_actual, ganancia_perdida, porcentaje)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, 
-              valor_total, valor_actual, ganancia_perdida, porcentaje))
-        conn.commit()
-        conn.close()
+            # Guardar en la base de datos
+            try:
+                conn = sqlite3.connect("precios.db")
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO historial_compras (
+                        fecha_compra, symbol, cantidad_acciones, valor_compra, 
+                        precio_actual, valor_total, valor_actual, ganancia_perdida, porcentaje
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual,
+                    valor_total, valor_actual, ganancia_perdida, porcentaje
+                ))
+                conn.commit()
+                flash("Registro guardado exitosamente.", "success")
+            except sqlite3.Error as e:
+                flash(f"Error al guardar en la base de datos: {str(e)}")
+            finally:
+                conn.close()
+                
+        except ValueError as e:
+            flash(f"Error en los datos ingresados: {str(e)}")
+        except Exception as e:
+            flash(f"Error inesperado: {str(e)}")
 
-    # Renderizar el historial con ordenamiento
-    historial = obtener_historial_compras(orden_campo, orden_direccion)
-    return render_template("index.html", historial=historial)
-
+    # Obtener y mostrar el historial ordenado
+    try:
+        historial = obtener_historial_compras(orden_campo, direccion)
+        return render_template("index.html", 
+                             historial=historial,
+                             orden_actual=ordenar_por,
+                             direccion_actual=direccion)
+    except Exception as e:
+        flash(f"Error al obtener el historial: {str(e)}")
+        return render_template("index.html", historial=[])
 
 # Ruta para obtener el precio actual de una acción en función de su símbolo
 @app.route('/precio_actual', methods=['GET'])

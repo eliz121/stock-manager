@@ -63,12 +63,12 @@
 
         <h3 class="mt-5">Historial de Compras</h3>
         {% if historial %}
-            <div class="d-flex justify-content-end mb-3">
-                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'asc')">Ordenar por Nombre (A-Z)</button>
-                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'desc')">Ordenar por Nombre (Z-A)</button>
-                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'asc')">Ordenar por Ganancia/Pérdida ($ Asc)</button>
-                <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'desc')">Ordenar por Ganancia/Pérdida ($ Desc)</button>
-            </div>
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'asc')">Ordenar por Nombre (A-Z)</button>
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'desc')">Ordenar por Nombre (Z-A)</button>
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'asc')">Ordenar por Ganancia/Pérdida ($ Asc)</button>
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'desc')">Ordenar por Ganancia/Pérdida ($ Desc)</button>
+        </div>
         <table class="table table-striped">
         <thead>
         <tr>
@@ -200,13 +200,16 @@
 </script>
 
 <script>
-    function ordenarHistorial(criterio, direccion) {
-        // Redirige al servidor con los parámetros de ordenamiento
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('ordenar_por', criterio);
-        urlParams.set('direccion', direccion);
-        window.location.search = urlParams.toString(); // Recarga la página con los parámetros
-    }
+function ordenarHistorial(criterio, direccion) {
+    const currentUrl = new URL(window.location.href);
+    
+    // Establecer los parámetros de ordenamiento
+    currentUrl.searchParams.set('ordenar_por', criterio);
+    currentUrl.searchParams.set('direccion', direccion);
+    
+    // Recargar la página con los nuevos parámetros
+    window.location.href = currentUrl.toString();
+}
 </script>
 
     <!-- Incluir Bootstrap JS -->
