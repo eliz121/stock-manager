@@ -126,3 +126,30 @@ table tr:hover {
 .container {
     animation: fadeIn 1.5s ease-in-out;
 }
+
+#sugerencias {
+    position: absolute;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#sugerencias .list-group-item {
+    cursor: pointer;
+    padding: 8px 12px;
+    transition: background-color 0.2s;
+}
+
+#sugerencias .list-group-item:hover,
+#sugerencias .list-group-item.active {
+    background-color: #f8f9fa;
+    color: #000;
+}
+
+.empresa-container {
+    position: relative;
+}

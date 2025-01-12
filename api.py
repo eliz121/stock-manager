@@ -125,29 +125,45 @@ def home():
     
     if request.method == "POST":
         try:
+            # Obtener y validar fecha
             fecha_compra = request.form.get("fecha_compra")
-            symbol = request.form.get("empresa")
-            cantidad_acciones = int(request.form.get("cantidad_acciones"))
-            valor_compra = float(request.form.get("valor_compra"))
+            if not fecha_compra:
+                raise ValueError("La fecha de compra es obligatoria")
             
-            # Validaciones
-            if not all([fecha_compra, symbol, cantidad_acciones, valor_compra]):
-                flash("Error: Todos los campos son obligatorios.")
-                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
-            
-            if cantidad_acciones <= 0:
-                flash("Error: La cantidad no es válida.")
-                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
+            try:
+                fecha_parsed = datetime.strptime(fecha_compra, '%Y-%m-%d')
+                if fecha_parsed > datetime.now():
+                    raise ValueError("La fecha no puede ser futura")
+            except ValueError as e:
+                raise ValueError("Fecha inválida")
 
-            if valor_compra <= 0:
-                flash("Error: El valor de compra no es válido.")
-                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
-            
-            # Obtener precio actual
+            # Obtener y validar símbolo de empresa
+            symbol = request.form.get("empresa", "").strip().upper()
+            if not symbol:
+                raise ValueError("El símbolo de la empresa es obligatorio")
+            if not symbol.isalpha():
+                raise ValueError("El símbolo debe contener solo letras")
+
+            # Obtener y validar cantidad de acciones
+            try:
+                cantidad_acciones = int(request.form.get("cantidad_acciones", 0))
+                if cantidad_acciones <= 0:
+                    raise ValueError("La cantidad de acciones debe ser mayor a 0")
+            except ValueError:
+                raise ValueError("La cantidad de acciones debe ser un número entero válido")
+
+            # Obtener y validar valor de compra
+            try:
+                valor_compra = float(request.form.get("valor_compra", 0))
+                if valor_compra <= 0:
+                    raise ValueError("El valor de compra debe ser mayor a 0")
+            except ValueError:
+                raise ValueError("El valor de compra debe ser un número válido")
+
+            # Validar que el símbolo existe y obtener precio actual
             precio_actual = obtener_precio_actual(symbol)
             if precio_actual is None:
-                flash("Error: El símbolo de la empresa no es válido o no se pudo obtener el precio actual.")
-                return render_template("index.html", historial=obtener_historial_compras(orden_campo, direccion))
+                raise ValueError("No se pudo obtener el precio actual para este símbolo")
 
             # Cálculos
             valor_total = round(cantidad_acciones * valor_compra, 2)
@@ -161,24 +177,24 @@ def home():
                 cursor = conn.cursor()
                 cursor.execute("""
                     INSERT INTO historial_compras (
-                        fecha_compra, symbol, cantidad_acciones, valor_compra, 
+                        fecha_compra, symbol, cantidad_acciones, valor_compra,
                         precio_actual, valor_total, valor_actual, ganancia_perdida, porcentaje
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual,
-                    valor_total, valor_actual, ganancia_perdida, porcentaje
+                    fecha_compra, symbol, cantidad_acciones, valor_compra,
+                    precio_actual, valor_total, valor_actual, ganancia_perdida, porcentaje
                 ))
                 conn.commit()
-                flash("Registro guardado exitosamente.", "success")
+                flash("Registro guardado exitosamente", "success")
             except sqlite3.Error as e:
-                flash(f"Error al guardar en la base de datos: {str(e)}")
+                raise ValueError(f"Error al guardar en la base de datos: {str(e)}")
             finally:
                 conn.close()
-                
+
         except ValueError as e:
-            flash(f"Error en los datos ingresados: {str(e)}")
+            flash(str(e), "error")
         except Exception as e:
-            flash(f"Error inesperado: {str(e)}")
+            flash("Error inesperado al procesar la solicitud", "error")
 
     # Obtener y mostrar el historial ordenado
     try:
@@ -202,26 +218,48 @@ def precio_actual():
         flash("No se pudo obtener el precio actual.")
         return jsonify({"error": "No se pudo obtener el precio actual"}), 404
 
-# Nueva ruta para buscar empresas (autocompletado)
-@app.route('/buscar_empresa', methods=['GET'])
-def buscar_empresa():
-    query = request.args.get("q")  # Obtener la consulta de la búsqueda
-    if query:
-        API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")  # Acceder a la API key
-        API_URL = "https://financialmodelingprep.com/api/v3/search"
-        try:
-            # Realizar la solicitud a la API de Financial Modeling Prep
-            response = requests.get(API_URL, params={"query": query, "apikey": API_KEY})
-            response.raise_for_status()  # Verificar que la respuesta sea correcta
-            data = response.json()
+# Actualiza la ruta en el backend (Python)
+@app.route('/buscar_simbolo', methods=['GET'])
+def buscar_simbolo():
+    term = request.args.get("term", "").upper()
+    if not term or len(term) < 2:
+        return jsonify({"simbolos": []})
+    
+    API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
+    if not API_KEY:
+        return jsonify({"error": "API key no configurada"}), 500
 
-            # Filtrar y preparar los resultados
-            resultados = [{"symbol": item["symbol"], "name": item["name"]} for item in data[:10]]  # Limitar a 10 resultados
-            return jsonify(resultados)
-        except requests.exceptions.RequestException as e:
-            print(f"Error al hacer la solicitud: {e}")
-            return jsonify({"error": "No se pudieron obtener los resultados de búsqueda."}), 500
-    return jsonify({"error": "No se proporcionó ninguna consulta."}), 400
+    try:
+        # Usar la API de búsqueda de FMP
+        url = "https://financialmodelingprep.com/api/v3/search"
+        params = {
+            "query": term,
+            "limit": 10,
+            "apikey": API_KEY
+        }
+        
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+
+        # Formatear los resultados
+        simbolos = [
+            {
+                "symbol": item["symbol"],
+                "nombre": f"{item['name']} ({item['symbol']})"
+            }
+            for item in data
+            if item.get("symbol") and item.get("name")
+        ]
+
+        return jsonify({"simbolos": simbolos})
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error en la API: {str(e)}")
+        return jsonify({"error": "Error al buscar símbolos"}), 500
+    except Exception as e:
+        print(f"Error inesperado: {str(e)}")
+        return jsonify({"error": "Error inesperado"}), 500
 
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)

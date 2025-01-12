@@ -105,42 +105,112 @@
     </div>
 
     <script>
-        const inputEmpresa = document.getElementById("empresa");
-        const sugerenciasList = document.getElementById("sugerencias");
+// Función para manejar el autocompletado
+inputEmpresa.addEventListener("input", async function() {
+    const term = inputEmpresa.value.trim();
+    
+    // Ocultar la lista si el input está vacío
+    if (term.length < 2) {
+        sugerenciasList.style.display = 'none';
+        return;
+    }
 
-        inputEmpresa.addEventListener("input", function() {
-            const term = inputEmpresa.value;
+    try {
+        const response = await fetch(`/buscar_simbolo?term=${encodeURIComponent(term)}`);
+        if (!response.ok) throw new Error('Error en la búsqueda');
+        
+        const data = await response.json();
+        
+        // Limpiar y ocultar la lista primero
+        sugerenciasList.innerHTML = '';
+        
+        if (data.simbolos && data.simbolos.length > 0) {
+            // Crear y mostrar las sugerencias
+            data.simbolos.forEach(simbolo => {
+                const li = document.createElement("li");
+                li.classList.add("list-group-item", "list-group-item-action");
+                li.textContent = simbolo.nombre;
+                
+                // Estilo al pasar el mouse
+                li.addEventListener("mouseover", function() {
+                    this.classList.add("active");
+                });
+                
+                li.addEventListener("mouseout", function() {
+                    this.classList.remove("active");
+                });
+                
+                // Manejar la selección
+                li.addEventListener("click", function() {
+                    inputEmpresa.value = simbolo.symbol;
+                    sugerenciasList.style.display = 'none';
+                    actualizarPrecio(simbolo.symbol);
+                });
+                
+                sugerenciasList.appendChild(li);
+            });
+            
+            sugerenciasList.style.display = 'block';
+        } else {
+            sugerenciasList.style.display = 'none';
+        }
+    } catch (error) {
+        console.error("Error en la búsqueda:", error);
+        sugerenciasList.style.display = 'none';
+    }
+});
 
-            if (term.length > 1) {  // Se recomienda iniciar la búsqueda
-                fetch(`/buscar_simbolo?term=${term}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        sugerenciasList.innerHTML = '';
-                        if (data.simbolos.length > 0) {
-                            data.simbolos.forEach(simbolo => {
-                                const li = document.createElement("li");
-                                li.classList.add("list-group-item");
-                                li.textContent = `${simbolo.nombre} (${simbolo.symbol})`;
-                                li.addEventListener("click", function() {
-                                    inputEmpresa.value = simbolo.symbol;
-                                    sugerenciasList.style.display = 'none';
-                                    actualizarPrecio(simbolo.symbol);  // Consulta solo al seleccionar
-                                });
-                                sugerenciasList.appendChild(li);
-                            });
-                            sugerenciasList.style.display = 'block';
-                        } else {
-                            sugerenciasList.style.display = 'none';
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error al obtener símbolos:", error);
-                        sugerenciasList.style.display = 'none';
-                    });
+// Cerrar la lista de sugerencias al hacer clic fuera
+document.addEventListener("click", function(e) {
+    if (e.target !== inputEmpresa) {
+        sugerenciasList.style.display = 'none';
+    }
+});
+
+// Manejar la navegación con teclado
+inputEmpresa.addEventListener("keydown", function(e) {
+    const items = sugerenciasList.getElementsByTagName("li");
+    const activeItem = sugerenciasList.querySelector(".active");
+    
+    if (items.length === 0) return;
+    
+    switch(e.key) {
+        case "ArrowDown":
+            e.preventDefault();
+            if (!activeItem) {
+                items[0].classList.add("active");
             } else {
-                sugerenciasList.style.display = 'none';
+                const nextItem = activeItem.nextElementSibling;
+                if (nextItem) {
+                    activeItem.classList.remove("active");
+                    nextItem.classList.add("active");
+                }
             }
-        });
+            break;
+            
+        case "ArrowUp":
+            e.preventDefault();
+            if (activeItem) {
+                const prevItem = activeItem.previousElementSibling;
+                if (prevItem) {
+                    activeItem.classList.remove("active");
+                    prevItem.classList.add("active");
+                }
+            }
+            break;
+            
+        case "Enter":
+            e.preventDefault();
+            if (activeItem) {
+                activeItem.click();
+            }
+            break;
+            
+        case "Escape":
+            sugerenciasList.style.display = 'none';
+            break;
+    }
+});
 
         function actualizarPrecio(symbol) {
             fetch(`/precio_actual?symbol=${symbol}`)
@@ -156,48 +226,101 @@
         }
     </script>
 
-    <script>
-    document.querySelector("form").addEventListener("submit", function (event) {
-    // Obtener los valores de los campos
-    const fechaCompra = document.getElementById("fecha_compra").value;
-    const empresa = document.getElementById("empresa").value.trim();
-    const cantidadAcciones = document.getElementById("cantidad_acciones").value;
-    const valorCompra = document.getElementById("valor_compra").value;
-
-    let isValid = true;
-    let errorMessage = "";
-
-    // Validar fecha de compra
-    if (!fechaCompra) {
-        isValid = false;
-        errorMessage += "La fecha de compra es obligatoria.\n";
-    }
-
-    // Validar empresa
-    if (empresa.length < 1) {
-        isValid = false;
-        errorMessage += "La empresa debe contener al menos 1 caracter.\n";
-    }
-
-    // Validar cantidad de acciones
-    if (isNaN(cantidadAcciones) || cantidadAcciones <= 0) {
-        isValid = false;
-        errorMessage += "La cantidad de acciones debe ser un número mayor a 0.\n";
-    }
-
-    // Validar valor de compra
-    if (isNaN(valorCompra) || valorCompra <= 0) {
-        isValid = false;
-        errorMessage += "El valor de compra por acción debe ser un número mayor a 0.\n";
-    }
-
-    // Si hay errores, prevenir el envío del formulario y mostrar mensajes
-    if (!isValid) {
-        event.preventDefault();
-        alert(errorMessage);
-    }
-  });
-</script>
+<script>
+    document.querySelector("form").addEventListener("submit", function(event) {
+        event.preventDefault(); // Prevenir el envío por defecto
+        
+        // Obtener todos los campos
+        const fechaCompra = document.getElementById("fecha_compra").value;
+        const empresa = document.getElementById("empresa").value.trim();
+        const cantidadAcciones = document.getElementById("cantidad_acciones").value;
+        const valorCompra = document.getElementById("valor_compra").value;
+        
+        let errores = [];
+        
+        // Validar fecha de compra
+        if (!fechaCompra) {
+            errores.push("La fecha de compra es obligatoria");
+        } else {
+            const fechaSeleccionada = new Date(fechaCompra);
+            const hoy = new Date();
+            if (fechaSeleccionada > hoy) {
+                errores.push("La fecha de compra no puede ser futura");
+            }
+        }
+        
+        // Validar empresa (símbolo)
+        if (!empresa) {
+            errores.push("Debe seleccionar una empresa");
+        } else if (!/^[A-Z]+$/.test(empresa)) {
+            errores.push("El símbolo de la empresa debe contener solo letras mayúsculas");
+        }
+        
+        // Validar cantidad de acciones
+        if (!cantidadAcciones) {
+            errores.push("La cantidad de acciones es obligatoria");
+        } else {
+            const cantidadNum = parseFloat(cantidadAcciones);
+            if (isNaN(cantidadNum)) {
+                errores.push("La cantidad de acciones debe ser un número");
+            } else if (cantidadNum <= 0) {
+                errores.push("La cantidad de acciones debe ser mayor a 0");
+            } else if (!Number.isInteger(cantidadNum)) {
+                errores.push("La cantidad de acciones debe ser un número entero");
+            }
+        }
+        
+        // Validar valor de compra
+        if (!valorCompra) {
+            errores.push("El valor de compra es obligatorio");
+        } else {
+            const valorNum = parseFloat(valorCompra);
+            if (isNaN(valorNum)) {
+                errores.push("El valor de compra debe ser un número");
+            } else if (valorNum <= 0) {
+                errores.push("El valor de compra debe ser mayor a 0");
+            }
+        }
+        
+        // Si hay errores, mostrarlos y detener el envío
+        if (errores.length > 0) {
+            const mensajeError = errores.join("\n");
+            alert(mensajeError);
+            return false;
+        }
+        
+        // Si todo está bien, enviar el formulario
+        this.submit();
+    });
+    
+    // Validación en tiempo real para cantidad de acciones
+    document.getElementById("cantidad_acciones").addEventListener("input", function(e) {
+        let value = e.target.value;
+        
+        // Remover caracteres no numéricos
+        value = value.replace(/[^0-9]/g, '');
+        
+        // Actualizar el valor del campo
+        e.target.value = value;
+    });
+    
+    // Validación en tiempo real para valor de compra
+    document.getElementById("valor_compra").addEventListener("input", function(e) {
+        let value = e.target.value;
+        
+        // Permitir números y un punto decimal
+        value = value.replace(/[^0-9.]/g, '');
+        
+        // Asegurar que solo haya un punto decimal
+        const parts = value.split('.');
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+        }
+        
+        // Actualizar el valor del campo
+        e.target.value = value;
+    });
+    </script>
 
 <script>
 function ordenarHistorial(criterio, direccion) {
