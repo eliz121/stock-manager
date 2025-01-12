@@ -9,12 +9,17 @@
 </head>
 <body>
     <div class="container mt-5">
-        <!-- Mensajes flash de error o éxito -->
-        {% with messages = get_flashed_messages() %}
+        <!-- Mensajes flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div class="alert alert-warning" role="alert">
-            {{ messages[0] }}
-        </div>
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            {% endfor %}
         {% endif %}
         {% endwith %}
         
@@ -105,6 +110,10 @@
     </div>
 
     <script>
+// Inicializar variables
+const inputEmpresa = document.getElementById("empresa");
+const sugerenciasList = document.getElementById("sugerencias");
+
 // Función para manejar el autocompletado
 inputEmpresa.addEventListener("input", async function() {
     const term = inputEmpresa.value.trim();
@@ -117,7 +126,9 @@ inputEmpresa.addEventListener("input", async function() {
 
     try {
         const response = await fetch(`/buscar_simbolo?term=${encodeURIComponent(term)}`);
-        if (!response.ok) throw new Error('Error en la búsqueda');
+        if (!response.ok) {
+            throw new Error('Error en la búsqueda');
+        }
         
         const data = await response.json();
         
@@ -129,7 +140,7 @@ inputEmpresa.addEventListener("input", async function() {
             data.simbolos.forEach(simbolo => {
                 const li = document.createElement("li");
                 li.classList.add("list-group-item", "list-group-item-action");
-                li.textContent = simbolo.nombre;
+                li.textContent = `${simbolo.nombre}`;
                 
                 // Estilo al pasar el mouse
                 li.addEventListener("mouseover", function() {
