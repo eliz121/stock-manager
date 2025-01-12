@@ -8,8 +8,7 @@ import os
 
 load_dotenv()  # Carga las variables del archivo .env
 API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
-# Acceder a la API key
-API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
+
 
 if not API_KEY:
     raise ValueError("API key no configurada en el archivo .env")
@@ -18,7 +17,6 @@ app = Flask(__name__)
 
 # Verificar caché en la base de datos
 def obtener_precio_actual(symbol):
-    API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")  # Acceder a la API key
     CACHE_DURATION = timedelta(hours=1)  # Duración de la caché
 
     # Conexión a la base de datos
