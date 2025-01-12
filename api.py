@@ -6,9 +6,8 @@ import sqlite3
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # Carga las variables del archivo .env
+load_dotenv()
 API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
-
 
 if not API_KEY:
     raise ValueError("API key no configurada en el archivo .env")
@@ -93,15 +92,11 @@ def precio_actual():
 
 @app.route('/buscar_simbolo', methods=['GET'])
 def buscar_simbolo():
+    term = request.args.get("term", "").upper()
+    if not term or len(term) < 2:
+        return jsonify({"simbolos": []})
+    
     try:
-        term = request.args.get("term", "").upper()
-        if not term:
-            return jsonify({"error": "Término de búsqueda no proporcionado"}), 400
-        if len(term) < 2:
-            return jsonify({"error": "El término de búsqueda debe tener al menos 2 caracteres"}), 400
-        if not term.isalnum():
-            return jsonify({"error": "El término de búsqueda solo puede contener letras y números"}), 400
-
         url = "https://financialmodelingprep.com/api/v3/search"
         response = requests.get(
             url,
@@ -134,7 +129,6 @@ def buscar_simbolo():
         return jsonify({"error": "Error interno del servidor"}), 500
 
 def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc"):
-    # Validar que el campo y la dirección sean válidos para evitar inyecciones SQL
     campos_validos = ["fecha_compra", "symbol", "cantidad_acciones", "valor_compra", 
                       "precio_actual", "valor_total", "valor_actual", 
                       "ganancia_perdida", "porcentaje"]
@@ -145,11 +139,9 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc")
     if orden_direccion not in direcciones_validas:
         orden_direccion = "asc"
 
-    # Conexión a la base de datos
     conn = sqlite3.connect("precios.db")
     cursor = conn.cursor()
 
-    # Construir la consulta dinámica con los parámetros validados
     query = f"""
     SELECT fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, 
            valor_total, valor_actual, ganancia_perdida, porcentaje
@@ -160,8 +152,7 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc")
     historial = cursor.fetchall()
     conn.close()
 
-    # Convertir los resultados a un diccionario
-    historial_compras = [
+    return [
         {
             "fecha_compra": registro[0],
             "symbol": registro[1],
@@ -175,10 +166,7 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc")
         }
         for registro in historial
     ]
-    return historial_compras
 
-
-# En el archivo app.py, actualiza la ruta principal
 @app.route('/', methods=['GET', 'POST'])
 def home():
     ordenar_por = request.args.get("ordenar_por", "fecha_compra")
@@ -194,7 +182,6 @@ def home():
     
     if request.method == "POST":
         try:
-            # Validaciones...
             fecha_compra = request.form.get("fecha_compra")
             if not fecha_compra:
                 flash("La fecha de compra es obligatoria", "danger")
@@ -209,13 +196,10 @@ def home():
                 flash("Fecha inválida", "danger")
                 return redirect(request.url)
 
-            # Resto de validaciones...
             symbol = request.form.get("empresa", "").strip().upper()
             if not symbol:
                 flash("El símbolo de la empresa es obligatorio", "danger")
                 return redirect(request.url)
-                
-            # Proceso de guardado...
             
             flash("Registro guardado exitosamente", "success")
             return redirect(url_for('home'))
@@ -236,60 +220,6 @@ def home():
     except Exception as e:
         flash(f"Error al obtener el historial: {str(e)}", "danger")
         return render_template("index.html", historial=[])
-
-# Ruta para obtener el precio actual de una acción en función de su símbolo
-@app.route('/precio_actual', methods=['GET'])
-def precio_actual():
-    symbol = request.args.get("symbol")
-    precio = obtener_precio_actual(symbol)
-    if precio:
-        return jsonify({"precio_actual": precio})
-    else:
-        flash("No se pudo obtener el precio actual.")
-        return jsonify({"error": "No se pudo obtener el precio actual"}), 404
-
-# Actualiza la ruta en el backend (Python)
-@app.route('/buscar_simbolo', methods=['GET'])
-def buscar_simbolo():
-    term = request.args.get("term", "").upper()
-    if not term or len(term) < 2:
-        return jsonify({"simbolos": []})
-    
-    API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
-    if not API_KEY:
-        return jsonify({"error": "API key no configurada"}), 500
-
-    try:
-        # Usar la API de búsqueda de FMP
-        url = "https://financialmodelingprep.com/api/v3/search"
-        params = {
-            "query": term,
-            "limit": 10,
-            "apikey": API_KEY
-        }
-        
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-
-        # Formatear los resultados
-        simbolos = [
-            {
-                "symbol": item["symbol"],
-                "nombre": f"{item['name']} ({item['symbol']})"
-            }
-            for item in data
-            if item.get("symbol") and item.get("name")
-        ]
-
-        return jsonify({"simbolos": simbolos})
-
-    except requests.exceptions.RequestException as e:
-        print(f"Error en la API: {str(e)}")
-        return jsonify({"error": "Error al buscar símbolos"}), 500
-    except Exception as e:
-        print(f"Error inesperado: {str(e)}")
-        return jsonify({"error": "Error inesperado"}), 500
 
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)
