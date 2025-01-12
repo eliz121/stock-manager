@@ -5,7 +5,6 @@ body {
     color: #495057;
     line-height: 1.6;
     padding-top: 50px;
-    background-image: url('https://png.pngtree.com/png-clipart/20190124/ourlarge/pngtree-wealth-display-mobile-banking-stocks-data-display-png-image_553038.jpg');
     background-size: cover;
     background-position: center;
 }
@@ -75,7 +74,7 @@ form {
 table {
     width: 95%;
     margin-top: 40px;
-    margin-left: -25px;
+    margin-left: auto;
     margin-right: auto;
     border-collapse: collapse; /* Cambiado de separate a collapse */
 }
