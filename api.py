@@ -14,6 +14,10 @@ if not API_KEY:
     raise ValueError("API key no configurada en el archivo .env")
 
 app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+
+if not app.secret_key:
+    raise ValueError("Flask secret key no configurada en el archivo .env")
 
 # Verificar caché en la base de datos
 def obtener_precio_actual(symbol):
