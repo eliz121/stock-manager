@@ -128,7 +128,9 @@ def buscar_simbolo():
     except Exception as e:
         return jsonify({"error": "Error interno del servidor"}), 500
 
-def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc"):
+# Modificar la función obtener_historial_compras en app.py:
+
+def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc", fecha_inicio=None, fecha_fin=None):
     campos_validos = ["fecha_compra", "symbol", "cantidad_acciones", "valor_compra", 
                       "precio_actual", "valor_total", "valor_actual", 
                       "ganancia_perdida", "porcentaje"]
@@ -142,13 +144,25 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc")
     conn = sqlite3.connect("precios.db")
     cursor = conn.cursor()
 
-    query = f"""
+    query = """
     SELECT fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, 
            valor_total, valor_actual, ganancia_perdida, porcentaje
     FROM historial_compras
-    ORDER BY {orden_campo} {orden_direccion.upper()}
+    WHERE 1=1
     """
-    cursor.execute(query)
+    params = []
+
+    if fecha_inicio:
+        query += " AND fecha_compra >= ?"
+        params.append(fecha_inicio)
+    
+    if fecha_fin:
+        query += " AND fecha_compra <= ?"
+        params.append(fecha_fin)
+
+    query += f" ORDER BY {orden_campo} {orden_direccion.upper()}"
+    
+    cursor.execute(query, params)
     historial = cursor.fetchall()
     conn.close()
 
@@ -167,10 +181,13 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc")
         for registro in historial
     ]
 
+# Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
 def home():
     ordenar_por = request.args.get("ordenar_por", "fecha_compra")
     direccion = request.args.get("direccion", "asc")
+    fecha_inicio = request.args.get("fecha_inicio")
+    fecha_fin = request.args.get("fecha_fin")
     
     criterios_mapping = {
         "nombre": "symbol",
@@ -212,15 +229,80 @@ def home():
             return redirect(request.url)
 
     try:
-        historial = obtener_historial_compras(orden_campo, direccion)
+        historial = obtener_historial_compras(orden_campo, direccion, fecha_inicio, fecha_fin)
         return render_template("index.html", 
                              historial=historial,
                              orden_actual=ordenar_por,
-                             direccion_actual=direccion)
+                             direccion_actual=direccion,
+                             fecha_inicio=fecha_inicio,
+                             fecha_fin=fecha_fin)
     except Exception as e:
         flash(f"Error al obtener el historial: {str(e)}", "danger")
         return render_template("index.html", historial=[])
 
+def obtener_consolidacion():
+    conn = sqlite3.connect("precios.db")
+    cursor = conn.cursor()
+    
+    try:
+        # Obtener todas las compras agrupadas por símbolo
+        query = """
+        SELECT 
+            symbol,
+            SUM(cantidad_acciones) as cantidad_total,
+            SUM(valor_total) as valor_usd_total,
+            ROUND(SUM(valor_total) / SUM(cantidad_acciones), 2) as precio_costo
+        FROM historial_compras
+        GROUP BY symbol
+        """
+        cursor.execute(query)
+        resultados = cursor.fetchall()
+        
+        consolidacion = []
+        for row in resultados:
+            symbol, cantidad_total, valor_usd_total, precio_costo = row
+            
+            # Obtener precio actual para calcular ganancia/pérdida
+            try:
+                precio_actual = obtener_precio_actual(symbol)
+                valor_actual_total = precio_actual * cantidad_total
+                ganancia_perdida = valor_actual_total - valor_usd_total
+                porcentaje = round((ganancia_perdida / valor_usd_total) * 100, 2)
+            except Exception:
+                precio_actual = 0
+                ganancia_perdida = 0
+                porcentaje = 0
+            
+            consolidacion.append({
+                'accion': symbol,
+                'cantidad_total': cantidad_total,
+                'valor_usd_total': round(valor_usd_total, 2),
+                'precio_costo': precio_costo,
+                'precio_actual': precio_actual,
+                'ganancia_perdida': round(ganancia_perdida, 2),
+                'porcentaje': porcentaje
+            })
+        
+        return consolidacion
+    finally:
+        conn.close()
+
+@app.route('/consolidacion')
+def vista_consolidacion():
+    try:
+        consolidacion = obtener_consolidacion()
+        # Asegurarse de que los valores numéricos sean float
+        for item in consolidacion:
+            item['valor_usd_total'] = float(item['valor_usd_total'])
+            item['ganancia_perdida'] = float(item['ganancia_perdida'])
+            item['porcentaje'] = float(item['porcentaje'])
+            item['precio_actual'] = float(item['precio_actual'])
+            item['precio_costo'] = float(item['precio_costo'])
+        return render_template("consolidacion.html", consolidacion=consolidacion)
+    except Exception as e:
+        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
+        return render_template("consolidacion.html", consolidacion=[])
+    
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)
     print("Servidor corriendo en http://127.0.0.1:5000")
