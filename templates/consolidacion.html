@@ -110,7 +110,7 @@
     {% if consolidacion %}
     <script>
         // Datos para los gráficos
-        const consolidacionData = "{{ consolidacion|tojson|safe }}";
+        const consolidacionData = JSON.parse('{{ consolidacion|tojson|safe }}');
         
         // Configuración de colores
         const colors = [
