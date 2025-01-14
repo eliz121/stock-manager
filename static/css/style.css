@@ -1,7 +1,7 @@
 /* Estilo Global */
 body {
-    background-color: #e9ecef;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(to bottom right, #87CEEB, #D8BFD8); /* Gradiente celeste a lila */
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
     color: #495057;
     line-height: 1.6;
     padding-top: 50px;
@@ -54,20 +54,28 @@ form {
     box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.25);
 }
 
-/* Botón */
+/* Botón Azul Rey */
 .btn-primary {
     width: 100%;
-    background-color: #007bff;
-    border-color: #007bff;
+    background-color: #4169E1; /* Azul rey */
+    border-color: #4169E1;
     border-radius: 8px;
     padding: 12px;
     font-size: 1.1rem;
-    transition: background-color 0.3s;
+    color: white; /* Texto blanco */
+    font-weight: 600;
+    transition: background-color 0.3s, transform 0.2s ease-in-out;
 }
 
+/* Hover y Efecto al Pulsar */
 .btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
+    background-color: #27408B; /* Azul más oscuro */
+    border-color: #27408B;
+    transform: scale(1.05); /* Aumenta ligeramente el tamaño */
+}
+
+.btn-primary:active {
+    transform: scale(0.98); /* Reduce ligeramente al hacer clic */
 }
 
 /* Tabla de Historial */
@@ -76,7 +84,7 @@ table {
     margin-top: 40px;
     margin-left: auto;
     margin-right: auto;
-    border-collapse: collapse; /* Cambiado de separate a collapse */
+    border-collapse: collapse;
 }
 
 table th, table td {
@@ -86,17 +94,17 @@ table th, table td {
 }
 
 table th {
-    background-color: #007bff; /* Color de fondo para los títulos */
-    color: white; /* Color del texto */
+    background-color: #4169E1; /* Azul rey */
+    color: white; /* Texto blanco */
     font-weight: 600;
-    border: 2px solid #007bff; /* Borde más marcado */
+    border: 2px solid #4169E1;
 }
 
 table td {
     background-color: #fff;
     color: #495057;
     font-weight: 400;
-    border: 1px solid #dee2e6; /* Borde de las celdas */
+    border: 1px solid #dee2e6;
 }
 
 table tr:nth-child(even) {
@@ -116,7 +124,7 @@ table tr:hover {
     font-weight: 500;
 }
 
-/* Animación de Fondo (opcional) */
+/* Animación de Fondo */
 @keyframes fadeIn {
     0% { opacity: 0; }
     100% { opacity: 1; }
@@ -126,6 +134,7 @@ table tr:hover {
     animation: fadeIn 1.5s ease-in-out;
 }
 
+/* Sugerencias */
 #sugerencias {
     position: absolute;
     z-index: 1000;
