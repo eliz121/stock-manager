@@ -274,7 +274,6 @@ def obtener_consolidacion():
         for row in resultados:
             symbol, cantidad_total, valor_usd_total, precio_costo = row
             
-            # Obtener precio actual para calcular ganancia/pérdida
             try:
                 precio_actual = obtener_precio_actual(symbol)
                 valor_actual_total = precio_actual * cantidad_total
@@ -286,13 +285,14 @@ def obtener_consolidacion():
                 porcentaje = 0
             
             consolidacion.append({
-             'accion': symbol,
-             'valor_usd_total': float(round(valor_usd_total, 2)),
-             'precio_costo': float(precio_costo),
-             'precio_actual': float(precio_actual),
-             'ganancia_perdida': float(round(ganancia_perdida, 2)),
-             'porcentaje': float(porcentaje)
-    })
+                'accion': symbol,
+                'cantidad_total': int(cantidad_total),  # Aseguramos que sea entero
+                'valor_usd_total': float(round(valor_usd_total, 2)),
+                'precio_costo': float(precio_costo),
+                'precio_actual': float(precio_actual),
+                'ganancia_perdida': float(round(ganancia_perdida, 2)),
+                'porcentaje': float(porcentaje)
+            })
         
         return consolidacion
     finally:

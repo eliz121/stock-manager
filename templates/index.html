@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investify</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +27,7 @@
         {% endif %}
         {% endwith %}
         
-        <h2>Registrar Compra de Acciones</h2>
+        <h2>Investify</h2>
         <form method="POST" action="/">
             <!-- Campo para fecha de compra -->
             <div class="form-group">
@@ -69,11 +70,7 @@
             <p><strong>Porcentaje de Ganancia/Pérdida:</strong> {{ porcentaje }}%</p>
         {% endif %}
 
-        <h2>Consolidación de Acciones</h2>
-        <div class="mb-3">
-            <a href="/" class="btn btn-secondary">Volver al Registro</a>
-        </div>
-
+        <h2>Resumen de Compras</h2>
         {% if consolidacion %}
             <!-- Gráficos -->
             <div class="row mb-4">
@@ -153,7 +150,7 @@
     {% if consolidacion %}
     <script>
         // Datos para los gráficos
-        const consolidacionData = JSON.parse('{{ consolidacion|tojson|safe }}');
+        const consolidacionData = JSON.parse('{{ consolidacion|tojson|escapejs }}');
         
         // Configuración de colores
         const colors = [
