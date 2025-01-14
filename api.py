@@ -200,21 +200,9 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc",
     ]
 
 
-# Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    ordenar_por = request.args.get("ordenar_por", "fecha_compra")
     direccion = request.args.get("direccion", "asc")
-    fecha_inicio = request.args.get("fecha_inicio")
-    fecha_fin = request.args.get("fecha_fin")
-    
-    criterios_mapping = {
-        "nombre": "symbol",
-        "ganancia": "ganancia_perdida",
-        "fecha": "fecha_compra"
-    }
-    
-    orden_campo = criterios_mapping.get(ordenar_por, "fecha_compra")
     
     if request.method == "POST":
         try:
@@ -248,16 +236,21 @@ def home():
             return redirect(request.url)
 
     try:
-        historial = obtener_historial_compras(orden_campo, direccion, fecha_inicio, fecha_fin)
+        # Obtener consolidación
+        consolidacion = obtener_consolidacion()
+        
+        # Ordenar la consolidación
+        if direccion == "asc":
+            consolidacion = sorted(consolidacion, key=lambda x: x['ganancia_perdida'])
+        else:
+            consolidacion = sorted(consolidacion, key=lambda x: x['ganancia_perdida'], reverse=True)
+
         return render_template("index.html", 
-                             historial=historial,
-                             orden_actual=ordenar_por,
-                             direccion_actual=direccion,
-                             fecha_inicio=fecha_inicio,
-                             fecha_fin=fecha_fin)
+                             consolidacion=consolidacion,
+                             direccion_actual=direccion)
     except Exception as e:
-        flash(f"Error al obtener el historial: {str(e)}", "danger")
-        return render_template("index.html", historial=[])
+        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
+        return render_template("index.html", consolidacion=[])
 
 def obtener_consolidacion():
     conn = sqlite3.connect("precios.db")
@@ -305,22 +298,7 @@ def obtener_consolidacion():
     finally:
         conn.close()
 
-@app.route('/consolidacion')
-def vista_consolidacion():
-    try:
-        consolidacion = obtener_consolidacion()
-        # Asegurarse de que los valores numéricos sean float
-        for item in consolidacion:
-            item['valor_usd_total'] = float(item['valor_usd_total'])
-            item['ganancia_perdida'] = float(item['ganancia_perdida'])
-            item['porcentaje'] = float(item['porcentaje'])
-            item['precio_actual'] = float(item['precio_actual'])
-            item['precio_costo'] = float(item['precio_costo'])
-        return render_template("consolidacion.html", consolidacion=consolidacion)
-    except Exception as e:
-        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
-        return render_template("consolidacion.html", consolidacion=[])
-    
+
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)
     print("Servidor corriendo en http://127.0.0.1:5000")
