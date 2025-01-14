@@ -75,26 +75,22 @@
                             <th>Acción</th>
                             <th>Cantidad Total</th>
                             <th>Valor USD Total</th>
-                            <th>Precio de Costo</th>
+                            <th>Precio Costo</th>
                             <th>Precio Actual</th>
-                            <th>Ganancia/Pérdida ($)</th>
-                            <th>Ganancia/Pérdida (%)</th>
+                            <th>Ganancia/Pérdida</th>
+                            <th>Porcentaje</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in consolidacion %}
                         <tr>
                             <td>{{ item.accion }}</td>
-                            <td>{{ item.cantidad_total }}</td>
-                            <td>${{ "%.2f"|format(item.valor_usd_total) }}</td>
-                            <td>${{ "%.2f"|format(item.precio_costo) }}</td>
-                            <td>${{ "%.2f"|format(item.precio_actual) }}</td>
-                            <td class="{{ 'text-success' if item.ganancia_perdida > 0 else 'text-danger' if item.ganancia_perdida < 0 else '' }}">
-                                ${{ "%.2f"|format(item.ganancia_perdida) }}
-                            </td>
-                            <td class="{{ 'text-success' if item.porcentaje > 0 else 'text-danger' if item.porcentaje < 0 else '' }}">
-                                {{ "%.2f"|format(item.porcentaje) }}%
-                            </td>
+                            <td>{{ item.cantidad_total|format_number }}</td>
+                            <td>${{ item.valor_usd_total|format_number }}</td>
+                            <td>${{ item.precio_costo|format_number }}</td>
+                            <td>${{ item.precio_actual|format_number }}</td>
+                            <td>${{ item.ganancia_perdida|format_number }}</td>
+                            <td>{{ item.porcentaje|format_number }}%</td>
                         </tr>
                         {% endfor %}
                     </tbody>

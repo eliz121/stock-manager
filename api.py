@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import sqlite3
 from dotenv import load_dotenv
 import os
+import locale
 
 load_dotenv()
 API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
@@ -17,6 +18,23 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY')
 
 if not app.secret_key:
     raise ValueError("Flask secret key no configurada en el archivo .env")
+
+# Configurar el locale para usar comas en los números
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+# Agregar un filtro personalizado para formatear números
+def format_number(value):
+    try:
+        if isinstance(value, (int, float)):
+            if abs(value) >= 1000:
+                return "{:,.2f}".format(value)
+            return "{:.2f}".format(value)
+        return value
+    except (ValueError, TypeError):
+        return value
+
+# Registrar el filtro en la aplicación Flask
+app.jinja_env.filters['format_number'] = format_number
 
 def obtener_precio_actual(symbol):
     CACHE_DURATION = timedelta(hours=1)
@@ -171,15 +189,16 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc",
             "fecha_compra": registro[0],
             "symbol": registro[1],
             "cantidad_acciones": registro[2],
-            "valor_compra": registro[3],
-            "precio_actual": registro[4],
-            "valor_total": registro[5],
-            "valor_actual": registro[6],
-            "ganancia_perdida": registro[7],
-            "porcentaje": registro[8]
+            "valor_compra": float(registro[3]),
+            "precio_actual": float(registro[4]),
+            "valor_total": float(registro[5]),
+            "valor_actual": float(registro[6]),
+            "ganancia_perdida": float(registro[7]),
+            "porcentaje": float(registro[8])
         }
         for registro in historial
     ]
+
 
 # Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
@@ -274,14 +293,13 @@ def obtener_consolidacion():
                 porcentaje = 0
             
             consolidacion.append({
-                'accion': symbol,
-                'cantidad_total': cantidad_total,
-                'valor_usd_total': round(valor_usd_total, 2),
-                'precio_costo': precio_costo,
-                'precio_actual': precio_actual,
-                'ganancia_perdida': round(ganancia_perdida, 2),
-                'porcentaje': porcentaje
-            })
+             'accion': symbol,
+             'valor_usd_total': float(round(valor_usd_total, 2)),
+             'precio_costo': float(precio_costo),
+             'precio_actual': float(precio_actual),
+             'ganancia_perdida': float(round(ganancia_perdida, 2)),
+             'porcentaje': float(porcentaje)
+    })
         
         return consolidacion
     finally:

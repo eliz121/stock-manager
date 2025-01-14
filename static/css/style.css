@@ -1,7 +1,7 @@
 /* Estilo Global */
 body {
     background: linear-gradient(to bottom right, #87CEEB, #D8BFD8); /* Gradiente celeste a lila */
-    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font-family: 'Playfair Display', serif;
     color: #495057;
     line-height: 1.6;
     padding-top: 50px;

@@ -6,6 +6,9 @@
     <title>Gestión de Compra de Acciones</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
@@ -70,37 +73,6 @@
             <p><strong>Porcentaje de Ganancia/Pérdida:</strong> {{ porcentaje }}%</p>
         {% endif %}
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Filtros</h5>
-                <form id="filtrosForm" class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="fecha_inicio">Fecha Inicio:</label>
-                            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
-                                   value="{{ fecha_inicio if fecha_inicio }}">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="fecha_fin">Fecha Fin:</label>
-                            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
-                                   value="{{ fecha_fin if fecha_fin }}">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label>&nbsp;</label>
-                            <div>
-                                <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-                                <button type="button" class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
 
         <h3 class="mt-5">Historial de Compras</h3>
         {% if historial %}
@@ -111,36 +83,36 @@
             <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'desc')">Ordenar por Ganancia/Pérdida ($ Desc)</button>
         </div>
         <table class="table table-striped">
-        <thead>
-        <tr>
-            <th>Fecha de Compra</th>
-            <th>Empresa (Símbolo)</th>
-            <th>Cantidad de Acciones</th>
-            <th>Valor de Compra ($)</th>
-            <th>Precio Actual ($)</th>
-            <th>Valor Total ($)</th>
-            <th>Valor Actual ($)</th>
-            <th>Ganancia/Pérdida ($)</th>
-            <th>Porcentaje (%)</th>
-        </tr>
-       </thead>
-       <tbody id="tabla-historial">
-        {% for compra in historial %}
-        <tr>
-            <td>{{ compra.fecha_compra }}</td>
-            <td>{{ compra.symbol }}</td>
-            <td>{{ compra.cantidad_acciones }}</td>
-            <td>${{ compra.valor_compra }}</td>
-            <td>${{ compra.precio_actual }}</td>
-            <td>${{ compra.valor_total }}</td>
-            <td>${{ compra.valor_actual }}</td>
-            <td>${{ compra.ganancia_perdida }}</td>
-            <td>{{ compra.porcentaje }}%</td>
-        </tr>
-        {% endfor %}
-        </tbody>
+            <thead>
+                <tr>
+                    <th>Fecha de Compra</th>
+                    <th>Empresa (Símbolo)</th>
+                    <th>Cantidad de Acciones</th>
+                    <th>Valor de Compra ($)</th>
+                    <th>Precio Actual ($)</th>
+                    <th>Valor Total ($)</th>
+                    <th>Valor Actual ($)</th>
+                    <th>Ganancia/Pérdida ($)</th>
+                    <th>Porcentaje (%)</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-historial">
+                {% for compra in historial %}
+                <tr>
+                    <td>{{ compra.fecha_compra }}</td>
+                    <td>{{ compra.symbol }}</td>
+                    <td>{{ compra.cantidad_acciones|format_number }}</td>
+                    <td>${{ compra.valor_compra|format_number }}</td>
+                    <td>${{ compra.precio_actual|format_number }}</td>
+                    <td>${{ compra.valor_total|format_number }}</td>
+                    <td>${{ compra.valor_actual|format_number }}</td>
+                    <td>${{ compra.ganancia_perdida|format_number }}</td>
+                    <td>{{ compra.porcentaje|format_number }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
-        {% else %}
+    {% else %}
          <p>No se han registrado compras aún.</p>
         {% endif %}
     </div>
