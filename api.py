@@ -22,20 +22,6 @@ if not app.secret_key:
 # Configurar el locale para usar comas en los números
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
-# Agregar un filtro personalizado para formatear números
-def format_number(value):
-    try:
-        if isinstance(value, (int, float)):
-            if abs(value) >= 1000:
-                return "{:,.2f}".format(value)
-            return "{:.2f}".format(value)
-        return value
-    except (ValueError, TypeError):
-        return value
-
-# Registrar el filtro en la aplicación Flask
-app.jinja_env.filters['format_number'] = format_number
-
 def obtener_precio_actual(symbol):
     CACHE_DURATION = timedelta(hours=1)
 
@@ -189,20 +175,31 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc",
             "fecha_compra": registro[0],
             "symbol": registro[1],
             "cantidad_acciones": registro[2],
-            "valor_compra": float(registro[3]),
-            "precio_actual": float(registro[4]),
-            "valor_total": float(registro[5]),
-            "valor_actual": float(registro[6]),
-            "ganancia_perdida": float(registro[7]),
-            "porcentaje": float(registro[8])
+            "valor_compra": registro[3],
+            "precio_actual": registro[4],
+            "valor_total": registro[5],
+            "valor_actual": registro[6],
+            "ganancia_perdida": registro[7],
+            "porcentaje": registro[8]
         }
         for registro in historial
     ]
 
-
+# Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    ordenar_por = request.args.get("ordenar_por", "fecha_compra")
     direccion = request.args.get("direccion", "asc")
+    fecha_inicio = request.args.get("fecha_inicio")
+    fecha_fin = request.args.get("fecha_fin")
+    
+    criterios_mapping = {
+        "nombre": "symbol",
+        "ganancia": "ganancia_perdida",
+        "fecha": "fecha_compra"
+    }
+    
+    orden_campo = criterios_mapping.get(ordenar_por, "fecha_compra")
     
     if request.method == "POST":
         try:
@@ -236,21 +233,16 @@ def home():
             return redirect(request.url)
 
     try:
-        # Obtener consolidación
-        consolidacion = obtener_consolidacion()
-        
-        # Ordenar la consolidación
-        if direccion == "asc":
-            consolidacion = sorted(consolidacion, key=lambda x: x['ganancia_perdida'])
-        else:
-            consolidacion = sorted(consolidacion, key=lambda x: x['ganancia_perdida'], reverse=True)
-
+        historial = obtener_historial_compras(orden_campo, direccion, fecha_inicio, fecha_fin)
         return render_template("index.html", 
-                             consolidacion=consolidacion,
-                             direccion_actual=direccion)
+                             historial=historial,
+                             orden_actual=ordenar_por,
+                             direccion_actual=direccion,
+                             fecha_inicio=fecha_inicio,
+                             fecha_fin=fecha_fin)
     except Exception as e:
-        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
-        return render_template("index.html", consolidacion=[])
+        flash(f"Error al obtener el historial: {str(e)}", "danger")
+        return render_template("index.html", historial=[])
 
 def obtener_consolidacion():
     conn = sqlite3.connect("precios.db")
@@ -274,6 +266,7 @@ def obtener_consolidacion():
         for row in resultados:
             symbol, cantidad_total, valor_usd_total, precio_costo = row
             
+            # Obtener precio actual para calcular ganancia/pérdida
             try:
                 precio_actual = obtener_precio_actual(symbol)
                 valor_actual_total = precio_actual * cantidad_total
@@ -286,19 +279,34 @@ def obtener_consolidacion():
             
             consolidacion.append({
                 'accion': symbol,
-                'cantidad_total': int(cantidad_total),  # Aseguramos que sea entero
-                'valor_usd_total': float(round(valor_usd_total, 2)),
-                'precio_costo': float(precio_costo),
-                'precio_actual': float(precio_actual),
-                'ganancia_perdida': float(round(ganancia_perdida, 2)),
-                'porcentaje': float(porcentaje)
+                'cantidad_total': cantidad_total,
+                'valor_usd_total': round(valor_usd_total, 2),
+                'precio_costo': precio_costo,
+                'precio_actual': precio_actual,
+                'ganancia_perdida': round(ganancia_perdida, 2),
+                'porcentaje': porcentaje
             })
         
         return consolidacion
     finally:
         conn.close()
 
-
+@app.route('/consolidacion')
+def vista_consolidacion():
+    try:
+        consolidacion = obtener_consolidacion()
+        # Asegurarse de que los valores numéricos sean float
+        for item in consolidacion:
+            item['valor_usd_total'] = float(item['valor_usd_total'])
+            item['ganancia_perdida'] = float(item['ganancia_perdida'])
+            item['porcentaje'] = float(item['porcentaje'])
+            item['precio_actual'] = float(item['precio_actual'])
+            item['precio_costo'] = float(item['precio_costo'])
+        return render_template("consolidacion.html", consolidacion=consolidacion)
+    except Exception as e:
+        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
+        return render_template("consolidacion.html", consolidacion=[])
+    
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)
     print("Servidor corriendo en http://127.0.0.1:5000")
