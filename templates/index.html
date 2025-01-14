@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investify</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Gestión de Compra de Acciones</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
@@ -27,7 +23,7 @@
         {% endif %}
         {% endwith %}
         
-        <h2>Investify</h2>
+        <h2>Registrar Compra de Acciones</h2>
         <form method="POST" action="/">
             <!-- Campo para fecha de compra -->
             <div class="form-group">
@@ -57,6 +53,10 @@
             <button type="submit" class="btn btn-primary">Registrar Compra</button>
         </form>
 
+        <div class="mb-3">
+            <a href="{{ url_for('vista_consolidacion') }}" class="btn btn-primary">Ver Consolidación</a>
+        </div>
+
         <!-- Resultados de la compra -->
         {% if fecha_compra %}
             <h3 class="mt-5">Resultados de la Compra</h3>
@@ -70,187 +70,80 @@
             <p><strong>Porcentaje de Ganancia/Pérdida:</strong> {{ porcentaje }}%</p>
         {% endif %}
 
-        <h2>Resumen de Compras</h2>
-        {% if consolidacion %}
-            <!-- Gráficos -->
-            <div class="row mb-4">
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Distribución del Portafolio</h5>
-                            <canvas id="portfolioDistribution"></canvas>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Filtros</h5>
+                <form id="filtrosForm" class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="fecha_inicio">Fecha Inicio:</label>
+                            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                                   value="{{ fecha_inicio if fecha_inicio }}">
                         </div>
                     </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Ganancias/Pérdidas por Acción</h5>
-                            <canvas id="profitLoss"></canvas>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="fecha_fin">Fecha Fin:</label>
+                            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
+                                   value="{{ fecha_fin if fecha_fin }}">
                         </div>
                     </div>
-                </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+                                <button type="button" class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
+        </div>
+        
 
-            <div class="row mb-4">
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Rendimiento por Acción (%)</h5>
-                            <canvas id="performanceChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Inversión Total por Acción</h5>
-                            <canvas id="investmentChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabla de Consolidación -->
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Acción</th>
-                            <th>Cantidad Total</th>
-                            <th>Valor USD Total</th>
-                            <th>Precio Costo</th>
-                            <th>Precio Actual</th>
-                            <th>Ganancia/Pérdida</th>
-                            <th>Porcentaje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in consolidacion %}
-                        <tr>
-                            <td>{{ item.accion }}</td>
-                            <td>{{ item.cantidad_total|format_number }}</td>
-                            <td>${{ item.valor_usd_total|format_number }}</td>
-                            <td>${{ item.precio_costo|format_number }}</td>
-                            <td>${{ item.precio_actual|format_number }}</td>
-                            <td>${{ item.ganancia_perdida|format_number }}</td>
-                            <td>{{ item.porcentaje|format_number }}%</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <h3 class="mt-5">Historial de Compras</h3>
+        {% if historial %}
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'asc')">Ordenar por Nombre (A-Z)</button>
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'desc')">Ordenar por Nombre (Z-A)</button>
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'asc')">Ordenar por Ganancia/Pérdida ($ Asc)</button>
+            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'desc')">Ordenar por Ganancia/Pérdida ($ Desc)</button>
+        </div>
+        <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Fecha de Compra</th>
+            <th>Empresa (Símbolo)</th>
+            <th>Cantidad de Acciones</th>
+            <th>Valor de Compra ($)</th>
+            <th>Precio Actual ($)</th>
+            <th>Valor Total ($)</th>
+            <th>Valor Actual ($)</th>
+            <th>Ganancia/Pérdida ($)</th>
+            <th>Porcentaje (%)</th>
+        </tr>
+       </thead>
+       <tbody id="tabla-historial">
+        {% for compra in historial %}
+        <tr>
+            <td>{{ compra.fecha_compra }}</td>
+            <td>{{ compra.symbol }}</td>
+            <td>{{ compra.cantidad_acciones }}</td>
+            <td>${{ compra.valor_compra }}</td>
+            <td>${{ compra.precio_actual }}</td>
+            <td>${{ compra.valor_total }}</td>
+            <td>${{ compra.valor_actual }}</td>
+            <td>${{ compra.ganancia_perdida }}</td>
+            <td>{{ compra.porcentaje }}%</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        </table>
         {% else %}
-            <div class="alert alert-info">
-                No hay datos de consolidación disponibles.
-            </div>
+         <p>No se han registrado compras aún.</p>
         {% endif %}
     </div>
-
-    {% if consolidacion %}
-    <script>
-        // Datos para los gráficos
-        const consolidacionData = JSON.parse('{{ consolidacion|tojson|escapejs }}');
-        
-        // Configuración de colores
-        const colors = [
-            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-            '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
-        ];
-
-        // Preparar datos
-        const labels = consolidacionData.map(item => item.accion);
-        const valores = consolidacionData.map(item => item.valor_usd_total);
-        const ganancias = consolidacionData.map(item => item.ganancia_perdida);
-        const porcentajes = consolidacionData.map(item => item.porcentaje);
-
-        // 1. Gráfico de Distribución del Portafolio
-        new Chart(document.getElementById('portfolioDistribution'), {
-            type: 'pie',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: valores,
-                    backgroundColor: colors
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    },
-                    title: {
-                        display: true,
-                        text: 'Distribución de la Inversión'
-                    }
-                }
-            }
-        });
-
-        // 2. Gráfico de Ganancias/Pérdidas
-        new Chart(document.getElementById('profitLoss'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Ganancia/Pérdida ($)',
-                    data: ganancias,
-                    backgroundColor: ganancias.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // 3. Gráfico de Rendimiento
-        new Chart(document.getElementById('performanceChart'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Rendimiento (%)',
-                    data: porcentajes,
-                    backgroundColor: porcentajes.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // 4. Gráfico de Inversión Total
-        new Chart(document.getElementById('investmentChart'), {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: valores,
-                    backgroundColor: colors
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    }
-                }
-            }
-        });
-    </script>
-    {% endif %}
 
     <script>
 // Inicializar variables
