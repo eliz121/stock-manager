@@ -1,19 +1,27 @@
 @startuml stock-manager-diagram
-skinparam componentStyle rectangle
+skinparam componentStyle uml2
+skinparam component {
+  BackgroundColor #E3F2FD
+  BorderColor #1E88E5
+  FontColor #0D47A1
+}
 
-actor "Usuario" as User
+skinparam database{
+  BackgroundColor #C8E6C9 
+  BorderColor #388E3
+  FontColor #1B5E20
+}
 
-component "api.py" as API
+component "api.py" as API 
 component "index.html" as HTML
 component "style.css" as CSS
 component "Financial Modeling Prep API" as FMPAPI
 database "precios.db" as DB
 
-User --> HTML : Interacción
-HTML --> API : Solicitudes dinámicas
-HTML --> CSS : Estilos
-API --> FMPAPI : Solicita datos financieros
-API --> DB : Guarda/recupera datos
-DB --> API : Datos almacenados
-@enduml
+HTML --> API 
+HTML --> CSS 
+API --> FMPAPI 
+API --> DB 
+DB --> API 
 
+@enduml
