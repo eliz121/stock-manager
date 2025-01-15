@@ -188,7 +188,7 @@ table tr:hover {
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     margin-bottom: 40px; /* Mayor espaciado entre las tarjetas */
-    height: 450px; /* Altura mayor para hacer los gráficos más grandes */
+    height: 350px; /* Altura mayor para hacer los gráficos más grandes */
     padding: 30px; /* Más padding alrededor del contenido */
     display: flex;
     flex-direction: column;
@@ -234,9 +234,6 @@ table tr:hover {
         margin: 20px 0; /* Menos margen vertical en móviles */
     }
 
-    .charts-grid > .card-charts:nth-child(4) {
-        margin-top: -40px; /* Subir menos el gráfico 4 en móviles */
-    }
 }
 
 /* Estilos específicos para tipos de gráficos */
