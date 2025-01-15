@@ -197,7 +197,7 @@ table tr:hover {
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr); /* Dos columnas de igual tamaño */
-    gap: 60px; /* Mucho más espacio entre los gráficos */
+    gap: 30px; /* Mucho más espacio entre los gráficos */
     margin: 40px 0; /* Más margen vertical */
     justify-content: center; /* Centra los gráficos en la página */
 }
