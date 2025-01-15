@@ -269,6 +269,47 @@
                     }
                 }
             });
+
+            // 3. Gráfico de Rendimiento
+        new Chart(document.getElementById('performanceChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Rendimiento (%)',
+                    data: porcentajes,
+                    backgroundColor: porcentajes.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // 4. Gráfico de Inversión Total
+        new Chart(document.getElementById('investmentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: valores,
+                    backgroundColor: colors
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
         }
 
         // Inicializar gráficos al cargar la página
