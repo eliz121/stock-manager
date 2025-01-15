@@ -183,17 +183,7 @@ table tr:hover {
 }
 
 /* Estilos para los contenedores de gráficos */
-.card-charts {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    margin-bottom: 40px; /* Mayor espaciado entre las tarjetas */
-    height: 400px; /* Altura mayor para hacer los gráficos más grandes */
-    padding: 30px; /* Más padding alrededor del contenido */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
+
 
 .card-charts .card-title {
     font-size: 18px;
