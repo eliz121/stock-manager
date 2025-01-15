@@ -182,3 +182,78 @@ table tr:hover {
     background-color: rgb(0, 2, 139); /* Color más oscuro al pasar el cursor */
 }
 
+/* Estilos para los contenedores de gráficos */
+.card-charts {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    height: 250px; /* Altura fija para todos los gráficos */
+    display: flex;
+    flex-direction: column; /* Asegura que el contenido de la tarjeta se apile verticalmente */
+    justify-content: space-between; /* Da espacio entre el título y el canvas */
+}
+
+.card-charts .card-body {
+    padding: 15px; /* Más padding para un mejor espaciado */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Asegura que el título y el canvas estén separados */
+}
+
+.card-charts .card-title {
+    font-size: 16px; /* Mayor tamaño de fuente para los títulos */
+    margin-bottom: 10px; /* Mejor espaciado entre el título y el gráfico */
+    color: #333;
+    font-weight: 600;
+    text-align: center; /* Centra el título */
+}
+
+/* Contenedor para el canvas */
+.chart-container {
+    height: calc(100% - 40px); /* Altura total menos el espacio del título */
+    position: relative;
+    width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-charts {
+        height: 220px; /* Más pequeño en móviles */
+    }
+    
+    .card-charts .card-title {
+        font-size: 14px; /* Títulos más pequeños en móviles */
+    }
+}
+
+/* Estilos específicos para tipos de gráficos */
+.pie-chart-container {
+    padding-right: 20px; /* Espacio para la leyenda */
+}
+
+.bar-chart-container {
+    padding: 0 10px;
+}
+
+/* Estilos para la cuadrícula de gráficos */
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Ajuste automático de tamaño de columnas */
+    gap: 20px;
+    margin: 15px 0;
+    justify-content: center; /* Centra los gráficos dentro de la cuadrícula */
+}
+
+/* Estilos adicionales para mejorar la legibilidad */
+.chart-value {
+    font-size: 12px;
+    color: #666;
+}
+
+.chart-label {
+    font-size: 11px;
+    color: #444;
+}
+
