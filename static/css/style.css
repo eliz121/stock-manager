@@ -226,6 +226,16 @@ table tr:hover {
     justify-content: center; /* Centra los gráficos en la página */
 }
 
+/* Añadir un espacio extra entre las primeras filas (gráficos 1 y 3) */
+.charts-grid > .card-charts:nth-child(1), .charts-grid > .card-charts:nth-child(3) {
+    margin-bottom: 50px; /* Espacio adicional entre el primer y tercer gráfico */
+}
+
+/* Aumentar el margen superior del gráfico 4 (para subirlo un poco) */
+.charts-grid > .card-charts:nth-child(4) {
+    margin-top: -20px; /* Subir un poco el gráfico 4 */
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .card-charts {
@@ -260,4 +270,3 @@ table tr:hover {
     font-size: 11px;
     color: #444;
 }
-
