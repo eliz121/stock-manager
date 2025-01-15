@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>Gestión de Compra de Acciones</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
@@ -192,9 +193,15 @@
             const ganancias = consolidacionData.map(item => item.ganancia_perdida);
 
             // Destruir gráficos existentes si existen
-            Chart.helpers.each(Chart.instances, (instance) => {
-                instance.destroy();
-            });
+            let portfolioChart = Chart.getChart("portfolioDistribution");
+            if (portfolioChart) {
+                portfolioChart.destroy();
+            }
+
+            let profitChart = Chart.getChart("profitLoss");
+            if (profitChart) {
+                profitChart.destroy();
+            }
 
             // Gráfico de distribución del portafolio
             new Chart(document.getElementById('portfolioDistribution'), {
