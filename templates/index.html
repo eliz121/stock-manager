@@ -104,6 +104,7 @@
                     <tbody id="tabla-consolidacion">
                         {% for item in consolidacion %}
                         <tr>
+                            <td>{{ item['accion'] }}</td>
                             <td>{{ item.cantidad_total|format_number }}</td>
                             <td>${{ item.valor_usd_total|format_number }}</td>
                             <td>${{ item.precio_costo|format_number }}</td>
