@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>Gestión de Compra de Acciones</title>
+    <title>Investify</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
         {% endif %}
         {% endwith %}
         
-        <h2>Registrar Compra de Acciones</h2>
+        <h2>Investify</h2>
         <form method="POST" action="/">
             <!-- Campo para fecha de compra -->
             <div class="form-group">
@@ -63,10 +63,10 @@
             <!-- Controles de ordenamiento -->
             <div class="mb-3">
                 <button class="btn btn-secondary" onclick="ordenarPorGanancia('asc')">
-                    Ordenar por Ganancia ↑
+                    <strong>Ordenar por Ganancia ↑</strong>
                 </button>
                 <button class="btn btn-secondary ml-2" onclick="ordenarPorGanancia('desc')">
-                    Ordenar por Ganancia ↓
+                    <strong>Ordenar por Ganancia ↓</strong>
                 </button>
             </div>
 
@@ -110,6 +110,7 @@
         {% endif %}
     </div>
 
+    <h3 class="mt-5">Panel de Análisis</h3>
             <!-- Gráficos -->
             <div class="row mb-4">
                 <div class="col-md-6 mb-4">

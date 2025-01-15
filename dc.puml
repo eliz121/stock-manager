@@ -1,8 +1,19 @@
-@startuml diagramName
-component "api.py" as Backend
-component "index.html" as Template
-component "style.css" as Styles
+@startuml stock-manager-diagram
+skinparam componentStyle rectangle
 
-Backend --> Template
-Template --> Styles
+actor "Usuario" as User
+
+component "api.py" as API
+component "index.html" as HTML
+component "style.css" as CSS
+component "Financial Modeling Prep API" as FMPAPI
+database "precios.db" as DB
+
+User --> HTML : Interacción
+HTML --> API : Solicitudes dinámicas
+HTML --> CSS : Estilos
+API --> FMPAPI : Solicita datos financieros
+API --> DB : Guarda/recupera datos
+DB --> API : Datos almacenados
 @enduml
+
