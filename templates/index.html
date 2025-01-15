@@ -7,6 +7,9 @@
     <title>Gestión de Compra de Acciones</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
@@ -67,26 +70,6 @@
                 </button>
             </div>
 
-            <!-- Gráficos -->
-            <div class="row mb-4">
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Distribución del Portafolio</h5>
-                            <canvas id="portfolioDistribution"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Ganancias/Pérdidas por Acción</h5>
-                            <canvas id="profitLoss"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Tabla de Consolidación -->
             <div class="table-responsive">
                 <table class="table table-striped">
@@ -126,6 +109,48 @@
             </div>
         {% endif %}
     </div>
+
+            <!-- Gráficos -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><strong>Distribución del Portafolio</strong></h5>
+                            <canvas id="portfolioDistribution"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><strong>Ganancias/Pérdidas por Acción</strong></h5>
+                            <canvas id="profitLoss"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><strong>Rendimiento por Acción (%)</strong></h5>
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title"><strong>Inversión Total por Acción</strong></h5>
+                            <canvas id="investmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            
 
     {% if consolidacion %}
     <script>
