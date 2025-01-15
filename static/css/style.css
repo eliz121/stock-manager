@@ -187,15 +187,15 @@ table tr:hover {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    margin-bottom: 30px; /* Mayor espaciado entre las tarjetas */
-    height: 350px; /* Altura mayor para hacer los gráficos más grandes */
+    margin-bottom: 30px;
+    height: 400px; /* Altura mayor para hacer los gráficos más grandes */
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Espacio entre el título y el gráfico */
+    justify-content: space-between;
 }
 
 .card-charts .card-body {
-    padding: 20px; /* Más padding para mayor espacio */
+    padding: 24px; /* Más padding para mayor espacio */
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -203,8 +203,8 @@ table tr:hover {
 }
 
 .card-charts .card-title {
-    font-size: 18px; /* Aumentar el tamaño del título */
-    margin-bottom: 15px; /* Mayor espaciado entre el título y el gráfico */
+    font-size: 18px;
+    margin-bottom: 20px; /* Mayor espaciado entre el título y el gráfico */
     color: #333;
     font-weight: 600;
     text-align: center;
@@ -212,7 +212,7 @@ table tr:hover {
 
 /* Contenedor para el canvas */
 .chart-container {
-    height: calc(100% - 50px); /* Altura total menos el espacio del título */
+    height: calc(100% - 60px); /* Altura total menos el espacio del título */
     position: relative;
     width: 100%;
 }
@@ -221,7 +221,7 @@ table tr:hover {
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr); /* Dos columnas de igual tamaño */
-    gap: 60px; /* Mayor espacio entre los gráficos */
+    gap: 80px; /* Mayor espacio entre los gráficos */
     margin: 30px 0;
     justify-content: center; /* Centra los gráficos en la página */
 }
@@ -233,13 +233,13 @@ table tr:hover {
 
 /* Aumentar el margen superior del gráfico 4 (para subirlo un poco) */
 .charts-grid > .card-charts:nth-child(4) {
-    margin-top: -20px; /* Subir un poco el gráfico 4 */
+    margin-top: -40px; /* Subir un poco el gráfico 4 */
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .card-charts {
-        height: 250px; /* Más pequeño en móviles */
+        height: 300px; /* Más pequeño en móviles */
     }
 
     .card-charts .card-title {
@@ -248,6 +248,7 @@ table tr:hover {
 
     .charts-grid {
         grid-template-columns: 1fr; /* Una sola columna en dispositivos pequeños */
+        gap: 40px; /* Menos espacio entre los gráficos en móviles */
     }
 }
 
