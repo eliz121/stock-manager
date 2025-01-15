@@ -187,16 +187,9 @@ table tr:hover {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    margin-bottom: 30px;
-    height: 400px; /* Altura mayor para hacer los gráficos más grandes */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.card-charts .card-body {
-    padding: 24px; /* Más padding para mayor espacio */
-    height: 100%;
+    margin-bottom: 40px; /* Mayor espaciado entre las tarjetas */
+    height: 450px; /* Altura mayor para hacer los gráficos más grandes */
+    padding: 30px; /* Más padding alrededor del contenido */
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -204,42 +197,31 @@ table tr:hover {
 
 .card-charts .card-title {
     font-size: 18px;
-    margin-bottom: 20px; /* Mayor espaciado entre el título y el gráfico */
+    margin-bottom: 25px; /* Mayor espaciado entre el título y el gráfico */
     color: #333;
     font-weight: 600;
     text-align: center;
-}
-
-/* Contenedor para el canvas */
-.chart-container {
-    height: calc(100% - 60px); /* Altura total menos el espacio del título */
-    position: relative;
-    width: 100%;
 }
 
 /* Ajustes de cuadrícula para 2x2 */
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr); /* Dos columnas de igual tamaño */
-    gap: 80px; /* Mayor espacio entre los gráficos */
-    margin: 30px 0;
+    gap: 120px; /* Mucho más espacio entre los gráficos */
+    margin: 40px 0; /* Más margen vertical */
     justify-content: center; /* Centra los gráficos en la página */
 }
 
-/* Añadir un espacio extra entre las primeras filas (gráficos 1 y 3) */
-.charts-grid > .card-charts:nth-child(1), .charts-grid > .card-charts:nth-child(3) {
-    margin-bottom: 50px; /* Espacio adicional entre el primer y tercer gráfico */
-}
-
-/* Aumentar el margen superior del gráfico 4 (para subirlo un poco) */
+/* Aumentar el margen superior del gráfico 4 (para subirlo más) */
 .charts-grid > .card-charts:nth-child(4) {
-    margin-top: -40px; /* Subir un poco el gráfico 4 */
+    margin-top: -80px; /* Subir más el gráfico 4 */
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .card-charts {
-        height: 300px; /* Más pequeño en móviles */
+        height: 350px; /* Más pequeño en móviles */
+        padding: 20px; /* Menos padding en móviles */
     }
 
     .card-charts .card-title {
@@ -248,7 +230,12 @@ table tr:hover {
 
     .charts-grid {
         grid-template-columns: 1fr; /* Una sola columna en dispositivos pequeños */
-        gap: 40px; /* Menos espacio entre los gráficos en móviles */
+        gap: 50px; /* Menos espacio entre los gráficos en móviles */
+        margin: 20px 0; /* Menos margen vertical en móviles */
+    }
+
+    .charts-grid > .card-charts:nth-child(4) {
+        margin-top: -40px; /* Subir menos el gráfico 4 en móviles */
     }
 }
 
