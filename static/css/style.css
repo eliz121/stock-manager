@@ -221,7 +221,7 @@ table tr:hover {
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr); /* Dos columnas de igual tamaño */
-    gap: 30px; /* Mayor espacio entre los gráficos */
+    gap: 60px; /* Mayor espacio entre los gráficos */
     margin: 30px 0;
     justify-content: center; /* Centra los gráficos en la página */
 }
