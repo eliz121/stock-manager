@@ -53,98 +53,197 @@
             <button type="submit" class="btn btn-primary">Registrar Compra</button>
         </form>
 
-        <div class="mb-3">
-            <a href="{{ url_for('vista_consolidacion') }}" class="btn btn-primary">Ver Consolidación</a>
-        </div>
-
-        <!-- Resultados de la compra -->
-        {% if fecha_compra %}
-            <h3 class="mt-5">Resultados de la Compra</h3>
-            <p><strong>Fecha de Compra:</strong> {{ fecha_compra }}</p>
-            <p><strong>Cantidad de Acciones:</strong> {{ cantidad_acciones }}</p>
-            <p><strong>Valor de Compra por Acción:</strong> ${{ valor_compra }}</p>
-            <p><strong>Precio Actual de la Acción:</strong> ${{ precio_actual }}</p>
-            <p><strong>Valor Total de la Compra:</strong> ${{ valor_total }}</p>
-            <p><strong>Valor Actual de las Acciones:</strong> ${{ valor_actual }}</p>
-            <p><strong>Ganancia/Pérdida:</strong> ${{ ganancia_perdida }}</p>
-            <p><strong>Porcentaje de Ganancia/Pérdida:</strong> {{ porcentaje }}%</p>
-        {% endif %}
-
-        <div class="card mb-4">
-            <div class="card-body">
-                <h5 class="card-title">Filtros</h5>
-                <form id="filtrosForm" class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="fecha_inicio">Fecha Inicio:</label>
-                            <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
-                                   value="{{ fecha_inicio if fecha_inicio }}">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="fecha_fin">Fecha Fin:</label>
-                            <input type="date" class="form-control" id="fecha_fin" name="fecha_fin"
-                                   value="{{ fecha_fin if fecha_fin }}">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label>&nbsp;</label>
-                            <div>
-                                <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
-                                <button type="button" class="btn btn-secondary" onclick="limpiarFiltros()">Limpiar</button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <h3 class="mt-5">Consolidación de Cartera</h3>
         
+        {% if consolidacion %}
+            <!-- Controles de ordenamiento -->
+            <div class="mb-3">
+                <button class="btn btn-secondary" onclick="ordenarPorGanancia('asc')">
+                    Ordenar por Ganancia ↑
+                </button>
+                <button class="btn btn-secondary ml-2" onclick="ordenarPorGanancia('desc')">
+                    Ordenar por Ganancia ↓
+                </button>
+            </div>
 
-        <h3 class="mt-5">Historial de Compras</h3>
-        {% if historial %}
-        <div class="d-flex justify-content-end mb-3">
-            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'asc')">Ordenar por Nombre (A-Z)</button>
-            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('nombre', 'desc')">Ordenar por Nombre (Z-A)</button>
-            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'asc')">Ordenar por Ganancia/Pérdida ($ Asc)</button>
-            <button class="btn btn-secondary mx-1" onclick="ordenarHistorial('ganancia', 'desc')">Ordenar por Ganancia/Pérdida ($ Desc)</button>
-        </div>
-        <table class="table table-striped">
-        <thead>
-        <tr>
-            <th>Fecha de Compra</th>
-            <th>Empresa (Símbolo)</th>
-            <th>Cantidad de Acciones</th>
-            <th>Valor de Compra ($)</th>
-            <th>Precio Actual ($)</th>
-            <th>Valor Total ($)</th>
-            <th>Valor Actual ($)</th>
-            <th>Ganancia/Pérdida ($)</th>
-            <th>Porcentaje (%)</th>
-        </tr>
-       </thead>
-       <tbody id="tabla-historial">
-        {% for compra in historial %}
-        <tr>
-            <td>{{ compra.fecha_compra }}</td>
-            <td>{{ compra.symbol }}</td>
-            <td>{{ compra.cantidad_acciones }}</td>
-            <td>${{ compra.valor_compra }}</td>
-            <td>${{ compra.precio_actual }}</td>
-            <td>${{ compra.valor_total }}</td>
-            <td>${{ compra.valor_actual }}</td>
-            <td>${{ compra.ganancia_perdida }}</td>
-            <td>{{ compra.porcentaje }}%</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-        </table>
+            <!-- Gráficos -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Distribución del Portafolio</h5>
+                            <canvas id="portfolioDistribution"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Ganancias/Pérdidas por Acción</h5>
+                            <canvas id="profitLoss"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Consolidación -->
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Acción</th>
+                            <th>Cantidad Total</th>
+                            <th>Valor USD Total</th>
+                            <th>Precio Costo</th>
+                            <th>Precio Actual</th>
+                            <th>Ganancia/Pérdida ($)</th>
+                            <th>Porcentaje</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-consolidacion">
+                        {% for item in consolidacion %}
+                        <tr>
+                            <td>{{ item.cantidad_total|format_number }}</td>
+                            <td>${{ item.valor_usd_total|format_number }}</td>
+                            <td>${{ item.precio_costo|format_number }}</td>
+                            <td>${{ item.precio_actual|format_number }}</td>
+                            <td class="{{ 'text-success' if item.ganancia_perdida >= 0 else 'text-danger' }}">
+                            ${{ item.ganancia_perdida|format_number }}
+                            </td>
+                            <td class="{{ 'text-success' if item.porcentaje >= 0 else 'text-danger' }}">
+                                {{ item.porcentaje|format_number }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         {% else %}
-         <p>No se han registrado compras aún.</p>
+            <div class="alert alert-info">
+                No hay datos de consolidación disponibles.
+            </div>
         {% endif %}
     </div>
 
+    {% if consolidacion %}
+    <script>
+        // Datos para los gráficos
+        let consolidacionData = JSON.parse('{{ consolidacion|tojson|safe }}');
+        
+        // Función para ordenar datos
+        function ordenarPorGanancia(direccion) {
+            consolidacionData.sort((a, b) => {
+                if (direccion === 'asc') {
+                    return a.ganancia_perdida - b.ganancia_perdida;
+                } else {
+                    return b.ganancia_perdida - a.ganancia_perdida;
+                }
+            });
+            actualizarTablaYGraficos();
+        }
+
+        // Función para actualizar la tabla y gráficos
+        function actualizarTablaYGraficos() {
+            // Actualizar tabla
+            const tbody = document.getElementById('tabla-consolidacion');
+            tbody.innerHTML = '';
+            
+            consolidacionData.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.accion}</td>
+                    <td>${formatNumber(item.cantidad_total)}</td>
+                    <td>$${formatNumber(item.valor_usd_total)}</td>
+                    <td>$${formatNumber(item.precio_costo)}</td>
+                    <td>$${formatNumber(item.precio_actual)}</td>
+                    <td class="${item.ganancia_perdida >= 0 ? 'text-success' : 'text-danger'}">
+                        $${formatNumber(item.ganancia_perdida)}
+                    </td>
+                    <td class="${item.porcentaje >= 0 ? 'text-success' : 'text-danger'}">
+                        ${formatNumber(item.porcentaje)}%
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Actualizar gráficos
+            actualizarGraficos();
+        }
+
+        // Función para formatear números
+        function formatNumber(number) {
+            return new Intl.NumberFormat('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(number);
+        }
+
+        // Función para actualizar gráficos
+        function actualizarGraficos() {
+            // Configuración de colores
+            const colors = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'
+            ];
+
+            // Preparar datos
+            const labels = consolidacionData.map(item => item.accion);
+            const valores = consolidacionData.map(item => item.valor_usd_total);
+            const ganancias = consolidacionData.map(item => item.ganancia_perdida);
+
+            // Destruir gráficos existentes si existen
+            Chart.helpers.each(Chart.instances, (instance) => {
+                instance.destroy();
+            });
+
+            // Gráfico de distribución del portafolio
+            new Chart(document.getElementById('portfolioDistribution'), {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: valores,
+                        backgroundColor: colors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de ganancias/pérdidas
+            new Chart(document.getElementById('profitLoss'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Ganancia/Pérdida ($)',
+                        data: ganancias,
+                        backgroundColor: ganancias.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Inicializar gráficos al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            actualizarGraficos();
+        });
+    </script>
+    {% endif %}
     <script>
 // Inicializar variables
 const inputEmpresa = document.getElementById("empresa");

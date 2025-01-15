@@ -1,3 +1,4 @@
+import decimal
 import requests
 from flask import Flask, render_template, redirect, jsonify, flash, request, url_for
 from gevent.pywsgi import WSGIServer
@@ -6,6 +7,8 @@ import sqlite3
 from dotenv import load_dotenv
 import os
 import locale
+from decimal import Decimal
+
 
 load_dotenv()
 API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
@@ -21,6 +24,19 @@ if not app.secret_key:
 
 # Configurar el locale para usar comas en los números
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+# Agregar filtro personalizado para formatear números
+@app.template_filter('format_number')
+def format_number(value):
+    if value is None:
+        return "0.00"
+    try:
+        # Convertir a decimal para mayor precisión
+        d = Decimal(str(value))
+        # Formatear con comas para miles y 2 decimales
+        return locale.format_string("%.2f", d, grouping=True)
+    except (ValueError, decimal.InvalidOperation):
+        return "0.00"
 
 def obtener_precio_actual(symbol):
     CACHE_DURATION = timedelta(hours=1)
@@ -233,23 +249,19 @@ def home():
             return redirect(request.url)
 
     try:
-        historial = obtener_historial_compras(orden_campo, direccion, fecha_inicio, fecha_fin)
-        return render_template("index.html", 
-                             historial=historial,
-                             orden_actual=ordenar_por,
-                             direccion_actual=direccion,
-                             fecha_inicio=fecha_inicio,
-                             fecha_fin=fecha_fin)
+        # Obtener datos de consolidación
+        consolidacion = obtener_consolidacion()
+        return render_template("index.html", consolidacion=consolidacion)
     except Exception as e:
-        flash(f"Error al obtener el historial: {str(e)}", "danger")
-        return render_template("index.html", historial=[])
+        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
+        return render_template("index.html", consolidacion=[])
 
+# Modificar la función obtener_consolidacion para usar Decimal
 def obtener_consolidacion():
     conn = sqlite3.connect("precios.db")
     cursor = conn.cursor()
     
     try:
-        # Obtener todas las compras agrupadas por símbolo
         query = """
         SELECT 
             symbol,
@@ -266,24 +278,23 @@ def obtener_consolidacion():
         for row in resultados:
             symbol, cantidad_total, valor_usd_total, precio_costo = row
             
-            # Obtener precio actual para calcular ganancia/pérdida
             try:
-                precio_actual = obtener_precio_actual(symbol)
-                valor_actual_total = precio_actual * cantidad_total
-                ganancia_perdida = valor_actual_total - valor_usd_total
-                porcentaje = round((ganancia_perdida / valor_usd_total) * 100, 2)
+                precio_actual = Decimal(str(obtener_precio_actual(symbol)))
+                valor_actual_total = precio_actual * Decimal(str(cantidad_total))
+                ganancia_perdida = valor_actual_total - Decimal(str(valor_usd_total))
+                porcentaje = (ganancia_perdida / Decimal(str(valor_usd_total)) * 100).quantize(Decimal('0.01'))
             except Exception:
-                precio_actual = 0
-                ganancia_perdida = 0
-                porcentaje = 0
+                precio_actual = Decimal('0')
+                ganancia_perdida = Decimal('0')
+                porcentaje = Decimal('0')
             
             consolidacion.append({
                 'accion': symbol,
                 'cantidad_total': cantidad_total,
-                'valor_usd_total': round(valor_usd_total, 2),
-                'precio_costo': precio_costo,
-                'precio_actual': precio_actual,
-                'ganancia_perdida': round(ganancia_perdida, 2),
+                'valor_usd_total': Decimal(str(valor_usd_total)).quantize(Decimal('0.01')),
+                'precio_costo': Decimal(str(precio_costo)).quantize(Decimal('0.01')),
+                'precio_actual': precio_actual.quantize(Decimal('0.01')),
+                'ganancia_perdida': ganancia_perdida.quantize(Decimal('0.01')),
                 'porcentaje': porcentaje
             })
         
