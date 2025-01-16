@@ -68,6 +68,9 @@
                 <button class="btn btn-secondary ml-2 custom-btn" onclick="ordenarPorGanancia('desc')">
                     <strong>Ordenar por Ganancia ↓</strong>
                 </button>
+                <button class="btn btn-secondary ml-2 custom-btn" onclick="ordenarPorNombre('asc')">
+                    <strong>Ordenar A-Z</strong>
+                </button>
             </div>
 
             <!-- Tabla de Consolidación -->
@@ -79,7 +82,6 @@
                             <th>Cantidad Total</th>
                             <th>Valor USD Total</th>
                             <th>Precio Costo</th>
-                            <th>Precio Actual</th>
                             <th>Ganancia/Pérdida ($)</th>
                             <th>Porcentaje</th>
                         </tr>
@@ -91,7 +93,6 @@
                             <td>{{ item.cantidad_total|format_number }}</td>
                             <td>${{ item.valor_usd_total|format_number }}</td>
                             <td>${{ item.precio_costo|format_number }}</td>
-                            <td>${{ item.precio_actual|format_number }}</td>
                             <td class="{{ 'text-success' if item.ganancia_perdida >= 0 else 'text-danger' }}">
                             ${{ item.ganancia_perdida|format_number }}
                             </td>
@@ -165,6 +166,12 @@
             actualizarTablaYGraficos();
         }
 
+        // Función para ordenar por nombre (A-Z)
+        function ordenarPorNombre() {
+            consolidacionData.sort((a, b) => a.accion.localeCompare(b.accion)); // Orden A-Z
+            actualizarTablaYGraficos();
+        }
+
         // Función para actualizar la tabla y gráficos
         function actualizarTablaYGraficos() {
             // Actualizar tabla
@@ -178,7 +185,6 @@
                     <td>${formatNumber(item.cantidad_total)}</td>
                     <td>$${formatNumber(item.valor_usd_total)}</td>
                     <td>$${formatNumber(item.precio_costo)}</td>
-                    <td>$${formatNumber(item.precio_actual)}</td>
                     <td class="${item.ganancia_perdida >= 0 ? 'text-success' : 'text-danger'}">
                         $${formatNumber(item.ganancia_perdida)}
                     </td>
@@ -462,13 +468,12 @@ inputEmpresa.addEventListener("keydown", function(e) {
                 errores.push("La fecha de compra no puede ser futura");
             }
         }
-        
         // Validar empresa (símbolo)
-        if (!empresa) {
-            errores.push("Debe seleccionar una empresa");
-        } else if (!/^[A-Z]+$/.test(empresa)) {
-            errores.push("El símbolo de la empresa debe contener solo letras mayúsculas");
-        }
+    if (!empresa) {
+        errores.push("Debe seleccionar una empresa");
+    } else if (!/^[A-Z0-9]+(\.[A-Z0-9]+)*$/.test(empresa)) {
+        errores.push("El símbolo de la empresa debe contener solo letras mayúsculas, números, y opcionalmente puntos ('.').");
+    }
         
         // Validar cantidad de acciones
         if (!cantidadAcciones) {
