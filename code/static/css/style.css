@@ -5,10 +5,14 @@ body {
     color: #495057;
     line-height: 1.6;
     padding-top: 50px;
+    background-image: url('/static/img/imagen1.jpg');
     background-size: cover;
     background-position: center;
 }
 
+body {
+    animation: cambiarFondo 20s infinite;
+}
 /* Contenedor Principal */
 .container {
     max-width: 1200px;
@@ -113,6 +117,16 @@ table tr:nth-child(even) {
 table tr:hover {
     background-color: #f1f3f5;
 }
+
+/* Fondo con imágenes que cambian */
+@keyframes cambiarFondo {
+    0% { background-image: url('/static/img/imagen1.jpg'); }
+    25% { background-image: url('/static/img/imagen2.jpg'); }
+    50% { background-image: url('/static/img/imagen3.jpg'); }
+    75% { background-image: url('/static/img/imagen4.jpg'); }
+    100% { background-image: url('/static/img/imagen1.jpg'); } /* Vuelve a la primera imagen */
+}
+
 
 /* Mensaje de Alerta */
 .alert {
