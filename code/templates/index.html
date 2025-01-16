@@ -68,6 +68,9 @@
                 <button class="btn btn-secondary ml-2 custom-btn" onclick="ordenarPorGanancia('desc')">
                     <strong>Ordenar por Ganancia ↓</strong>
                 </button>
+                <button class="btn btn-secondary ml-2 custom-btn" onclick="ordenarPorNombre('asc')">
+                    <strong>Ordenar A-Z</strong>
+                </button>
             </div>
 
             <!-- Tabla de Consolidación -->
@@ -160,6 +163,12 @@
                     return b.ganancia_perdida - a.ganancia_perdida;
                 }
             });
+            actualizarTablaYGraficos();
+        }
+
+        // Función para ordenar por nombre (A-Z)
+        function ordenarPorNombre() {
+            consolidacionData.sort((a, b) => a.accion.localeCompare(b.accion)); // Orden A-Z
             actualizarTablaYGraficos();
         }
 
