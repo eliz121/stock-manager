@@ -1,4 +1,21 @@
 /* Estilo Global */
+
+/* Fondo con imágenes que cambian */
+@keyframes cambiarFondo {
+    0% { background-image: url('/static/img/imagen1.jpg'); }
+    25% { background-image: url('/static/img/imagen2.jpg'); }
+    50% { background-image: url('/static/img/imagen3.jpg'); }
+    75% { background-image: url('/static/img/imagen4.jpg'); }
+    100% { background-image: url('/static/img/imagen1.jpg'); } /* Vuelve a la primera imagen */
+}
+
+/* Animación de Fondo */
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+
 body {
     font-family: 'Playfair Display', serif;
     color: #495057;
@@ -7,11 +24,9 @@ body {
     background-image: url('/static/img/imagen1.jpg');
     background-size: cover;
     background-position: center;
-}
-
-body {
     animation: cambiarFondo 20s infinite;
 }
+
 /* Contenedor Principal */
 .container {
     max-width: 1200px;
@@ -20,6 +35,7 @@ body {
     background-color: rgba(255, 255, 255, 0.9);
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 1.5s ease-in-out;
 }
 
 /* Títulos */
@@ -117,16 +133,6 @@ table tr:hover {
     background-color: #f1f3f5;
 }
 
-/* Fondo con imágenes que cambian */
-@keyframes cambiarFondo {
-    0% { background-image: url('/static/img/imagen1.jpg'); }
-    25% { background-image: url('/static/img/imagen2.jpg'); }
-    50% { background-image: url('/static/img/imagen3.jpg'); }
-    75% { background-image: url('/static/img/imagen4.jpg'); }
-    100% { background-image: url('/static/img/imagen1.jpg'); } /* Vuelve a la primera imagen */
-}
-
-
 /* Mensaje de Alerta */
 .alert {
     text-align: center;
@@ -134,16 +140,6 @@ table tr:hover {
     color: #d9534f;
     margin-top: 30px;
     font-weight: 500;
-}
-
-/* Animación de Fondo */
-@keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-}
-
-.container {
-    animation: fadeIn 1.5s ease-in-out;
 }
 
 /* Sugerencias */
