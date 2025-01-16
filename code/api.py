@@ -204,15 +204,6 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc",
 # Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    ordenar_por = request.args.get("ordenar_por", "fecha_compra")
-    
-    criterios_mapping = {
-        "nombre": "symbol",
-        "ganancia": "ganancia_perdida",
-        "fecha": "fecha_compra"
-    }
-    
-    
     if request.method == "POST":
         try:
             fecha_compra = request.form.get("fecha_compra")
