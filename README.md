@@ -1,4 +1,6 @@
-# stock-manager
+# Investify
+
+Investify es una aplicación web diseñada para la gestión de la compra de acciones de empresas. Permite a los usuarios buscar empresas, consultar precios de acciones en tiempo real y realizar transacciones para gestionar su portafolio de inversiones.
 
 ## Licencias
 - **Código (rama main):** Licencia MIT.  
