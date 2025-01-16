@@ -181,7 +181,7 @@ table tr:hover {
 
 /* Estilo personalizado para los botones */
 .custom-btn {
-    background-color: rgb(135, 238, 241); /* Color de fondo */
+    background-color: rgb(23, 139, 235); /* Color de fondo */
     color: white; /* Texto en blanco para contraste */
     border: none; /* Eliminar bordes */
     padding: 10px 15px; /* Espaciado interno */
