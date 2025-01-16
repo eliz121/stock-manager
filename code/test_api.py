@@ -106,5 +106,5 @@ def test_error_simbolo_empresa(client):
 def test_obtener_historial_compras():
     historial = obtener_historial_compras()
     assert isinstance(historial, list)
-    assert len(historial) >= 0  # Comprobar que el historial no está vacío
+    assert len(historial) > 0  # Comprobar que el historial no está vacío
 

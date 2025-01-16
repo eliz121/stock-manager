@@ -207,6 +207,8 @@
             }).format(number);
         }
 
+        let charts = {};
+
         // Función para actualizar gráficos
         function actualizarGraficos() {
             // Configuración de colores
@@ -221,97 +223,95 @@
             const ganancias = consolidacionData.map(item => item.ganancia_perdida);
             const porcentajes = consolidacionData.map(item => item.porcentaje); // Añadido
 
-            // Destruir gráficos existentes si existen
-            ['portfolioDistribution', 'profitLoss', 'performanceChart', 'investmentChart'].forEach(chartId => {
-                let chart = Chart.getChart(chartId);
-                if (chart) {
-                    chart.destroy();
-                }
-            });
-
-            // 1. Gráfico de distribución del portafolio
-            new Chart(document.getElementById('portfolioDistribution'), {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: valores,
-                        backgroundColor: colors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
-
-            // 2. Gráfico de ganancias/pérdidas
-            new Chart(document.getElementById('profitLoss'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Ganancia/Pérdida ($)',
-                        data: ganancias,
-                        backgroundColor: ganancias.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-
-            // 3. Gráfico de Rendimiento
-            new Chart(document.getElementById('performanceChart'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Rendimiento (%)',
-                        data: porcentajes,
-                        backgroundColor: porcentajes.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-
-            // 4. Gráfico de Inversión Total
-            new Chart(document.getElementById('investmentChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: valores,
-                        backgroundColor: colors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
+             // Destruir gráficos existentes si existen
+        Object.keys(charts).forEach(chartId => {
+        if (charts[chartId]) {
+            charts[chartId].destroy();
         }
+    });
 
+    // 1. Gráfico de distribución del portafolio
+    charts['portfolioDistribution'] = new Chart(document.getElementById('portfolioDistribution'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: colors
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+
+    // 2. Gráfico de ganancias/pérdidas
+    charts['profitLoss'] = new Chart(document.getElementById('profitLoss'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Ganancia/Pérdida ($)',
+                data: ganancias,
+                backgroundColor: ganancias.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // 3. Gráfico de Rendimiento
+    charts['performanceChart'] = new Chart(document.getElementById('performanceChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Rendimiento (%)',
+                data: porcentajes,
+                backgroundColor: porcentajes.map(v => v >= 0 ? '#4BC0C0' : '#FF6384')
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // 4. Gráfico de Inversión Total
+    charts['investmentChart'] = new Chart(document.getElementById('investmentChart'), {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: colors
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+}
         // Inicializar gráficos al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             actualizarGraficos();
