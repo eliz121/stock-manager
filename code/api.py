@@ -205,9 +205,6 @@ def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc",
 @app.route('/', methods=['GET', 'POST'])
 def home():
     ordenar_por = request.args.get("ordenar_por", "fecha_compra")
-    direccion = request.args.get("direccion", "asc")
-    fecha_inicio = request.args.get("fecha_inicio")
-    fecha_fin = request.args.get("fecha_fin")
     
     criterios_mapping = {
         "nombre": "symbol",
@@ -215,7 +212,6 @@ def home():
         "fecha": "fecha_compra"
     }
     
-    orden_campo = criterios_mapping.get(ordenar_por, "fecha_compra")
     
     if request.method == "POST":
         try:

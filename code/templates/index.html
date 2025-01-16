@@ -447,99 +447,72 @@ inputEmpresa.addEventListener("keydown", function(e) {
     </script>
 
 <script>
+    // Función para validar si un valor es un número mayor a cero
+    function validarNumero(valor, nombre) {
+        const num = parseFloat(valor);
+        if (isNaN(num)) {
+            return `${nombre} debe ser un número`;
+        } else if (num <= 0) {
+            return `${nombre} debe ser mayor a 0`;
+        } else if (!Number.isInteger(num)) {
+            return `${nombre} debe ser un número entero`;
+        }
+        return null;
+    }
+
+    // Función para validar fecha
+    function validarFecha(fecha) {
+        const fechaSeleccionada = new Date(fecha);
+        const hoy = new Date();
+        if (fechaSeleccionada > hoy) {
+            return "La fecha de compra no puede ser futura";
+        }
+        return null;
+    }
+
+    // Función para validar el símbolo de la empresa
+    function validarEmpresa(empresa) {
+        const regex = /^[A-Z0-9]+(\.[A-Z0-9]+)*$/;
+        if (!empresa) return "Debe seleccionar una empresa";
+        if (!regex.test(empresa)) {
+            return "El símbolo de la empresa debe contener solo letras mayúsculas, números, y opcionalmente puntos ('.')";
+        }
+        return null;
+    }
+
     document.querySelector("form").addEventListener("submit", function(event) {
         event.preventDefault(); // Prevenir el envío por defecto
         
-        // Obtener todos los campos
+        // Obtener los valores de los campos
         const fechaCompra = document.getElementById("fecha_compra").value;
         const empresa = document.getElementById("empresa").value.trim();
         const cantidadAcciones = document.getElementById("cantidad_acciones").value;
         const valorCompra = document.getElementById("valor_compra").value;
         
         let errores = [];
-        
-        // Validar fecha de compra
-        if (!fechaCompra) {
-            errores.push("La fecha de compra es obligatoria");
-        } else {
-            const fechaSeleccionada = new Date(fechaCompra);
-            const hoy = new Date();
-            if (fechaSeleccionada > hoy) {
-                errores.push("La fecha de compra no puede ser futura");
-            }
-        }
-        // Validar empresa (símbolo)
-    if (!empresa) {
-        errores.push("Debe seleccionar una empresa");
-    } else if (!/^[A-Z0-9]+(\.[A-Z0-9]+)*$/.test(empresa)) {
-        errores.push("El símbolo de la empresa debe contener solo letras mayúsculas, números, y opcionalmente puntos ('.').");
-    }
-        
-        // Validar cantidad de acciones
-        if (!cantidadAcciones) {
-            errores.push("La cantidad de acciones es obligatoria");
-        } else {
-            const cantidadNum = parseFloat(cantidadAcciones);
-            if (isNaN(cantidadNum)) {
-                errores.push("La cantidad de acciones debe ser un número");
-            } else if (cantidadNum <= 0) {
-                errores.push("La cantidad de acciones debe ser mayor a 0");
-            } else if (!Number.isInteger(cantidadNum)) {
-                errores.push("La cantidad de acciones debe ser un número entero");
-            }
-        }
-        
-        // Validar valor de compra
-        if (!valorCompra) {
-            errores.push("El valor de compra es obligatorio");
-        } else {
-            const valorNum = parseFloat(valorCompra);
-            if (isNaN(valorNum)) {
-                errores.push("El valor de compra debe ser un número");
-            } else if (valorNum <= 0) {
-                errores.push("El valor de compra debe ser mayor a 0");
-            }
-        }
-        
-        // Si hay errores, mostrarlos y detener el envío
+
+        // Validar los campos
+        let errorFecha = validarFecha(fechaCompra);
+        if (errorFecha) errores.push(errorFecha);
+
+        let errorEmpresa = validarEmpresa(empresa);
+        if (errorEmpresa) errores.push(errorEmpresa);
+
+        let errorCantidad = validarNumero(cantidadAcciones, "La cantidad de acciones");
+        if (errorCantidad) errores.push(errorCantidad);
+
+        let errorValor = validarNumero(valorCompra, "El valor de compra");
+        if (errorValor) errores.push(errorValor);
+
+        // Mostrar errores si los hay
         if (errores.length > 0) {
-            const mensajeError = errores.join("\n");
-            alert(mensajeError);
+            alert(errores.join("\n"));
             return false;
         }
-        
-        // Si todo está bien, enviar el formulario
-        this.submit();
     });
-    
-    // Validación en tiempo real para cantidad de acciones
-    document.getElementById("cantidad_acciones").addEventListener("input", function(e) {
-        let value = e.target.value;
-        
-        // Remover caracteres no numéricos
-        value = value.replace(/[^0-9]/g, '');
-        
-        // Actualizar el valor del campo
-        e.target.value = value;
-    });
-    
-    // Validación en tiempo real para valor de compra
-    document.getElementById("valor_compra").addEventListener("input", function(e) {
-        let value = e.target.value;
-        
-        // Permitir números y un punto decimal
-        value = value.replace(/[^0-9.]/g, '');
-        
-        // Asegurar que solo haya un punto decimal
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
-        
-        // Actualizar el valor del campo
-        e.target.value = value;
-    });
-    </script>
+
+</script>
+
 
 <script>
 function ordenarHistorial(criterio, direccion) {
