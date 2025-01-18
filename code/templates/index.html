@@ -40,7 +40,11 @@
                 <label for="empresa">Empresa:</label>
                 <input type="text" class="form-control" id="empresa" name="empresa" placeholder="Escribe el símbolo de la empresa" required autocomplete="off">
                 <ul id="sugerencias" class="list-group mt-2" style="display: none;"></ul>
+                <small id="precio_actual_display" class="form-text text-muted mt-1"></small>
             </div>
+
+            <!-- Campo oculto para precio actual -->
+            <input type="hidden" id="precio_actual" name="precio_actual">
 
             <!-- Campo para cantidad de acciones -->
             <div class="form-group">
@@ -322,6 +326,7 @@
 // Inicializar variables
 const inputEmpresa = document.getElementById("empresa");
 const sugerenciasList = document.getElementById("sugerencias");
+const precioActualDisplay = document.getElementById("precio_actual_display");
 
 // Función para manejar el autocompletado
 inputEmpresa.addEventListener("input", async function() {
@@ -437,28 +442,43 @@ inputEmpresa.addEventListener("keydown", function(e) {
                 .then(response => response.json())
                 .then(data => {
                     const precio = data.precio_actual || "Precio no disponible";
-                    document.getElementById("valor_compra").value = precio;
+                    document.getElementById("precio_actual").value = precio;
+                    precioActualDisplay.innerHTML = `Precio actual: $${precio}`;
+                    precioActualDisplay.style.display = 'block';
                 })
                 .catch(error => {
                     console.error("Error al obtener el precio:", error);
-                    document.getElementById("valor_compra").value = "Error al obtener precio";
+                    document.getElementById("precio_actual").value = "";
+                    precioActualDisplay.innerHTML = "Error al obtener el precio";
+                    precioActualDisplay.style.display = 'block';
                 });
         }
     </script>
 
 <script>
-    // Función para validar si un valor es un número mayor a cero
-    function validarNumero(valor, nombre) {
-        const num = parseFloat(valor);
-        if (isNaN(num)) {
-            return `${nombre} debe ser un número`;
-        } else if (num <= 0) {
-            return `${nombre} debe ser mayor a 0`;
-        } else if (!Number.isInteger(num)) {
-            return `${nombre} debe ser un número entero`;
-        }
-        return null;
+    // Función para validar números enteros (cantidad de acciones)
+function validarNumeroEntero(valor, nombre) {
+    const num = parseFloat(valor);
+    if (isNaN(num)) {
+        return `${nombre} debe ser un número`;
+    } else if (num <= 0) {
+        return `${nombre} debe ser mayor a 0`;
+    } else if (!Number.isInteger(num)) {
+        return `${nombre} debe ser un número entero`;
     }
+    return null;
+}
+
+// Función para validar números decimales (precio de compra)
+function validarNumeroDecimal(valor, nombre) {
+    const num = parseFloat(valor);
+    if (isNaN(num)) {
+        return `${nombre} debe ser un número`;
+    } else if (num <= 0) {
+        return `${nombre} debe ser mayor a 0`;
+    }
+    return null;
+}
 
     // Función para validar fecha
     function validarFecha(fecha) {
@@ -498,10 +518,10 @@ inputEmpresa.addEventListener("keydown", function(e) {
         let errorEmpresa = validarEmpresa(empresa);
         if (errorEmpresa) errores.push(errorEmpresa);
 
-        let errorCantidad = validarNumero(cantidadAcciones, "La cantidad de acciones");
+        let errorCantidad = validarNumeroEntero(cantidadAcciones, "La cantidad de acciones");
         if (errorCantidad) errores.push(errorCantidad);
 
-        let errorValor = validarNumero(valorCompra, "El valor de compra");
+        let errorValor = validarNumeroDecimal(valorCompra, "El valor de compra");
         if (errorValor) errores.push(errorValor);
 
         // Mostrar errores si los hay
@@ -509,8 +529,9 @@ inputEmpresa.addEventListener("keydown", function(e) {
             alert(errores.join("\n"));
             return false;
         }
-    });
 
+        this.submit(); // Enviar el formulario
+    });
 </script>
 
 
