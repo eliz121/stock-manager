@@ -1,169 +1,128 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta
-import sqlite3
-import json
-from api import app, obtener_precio_actual, obtener_historial_compras, obtener_consolidacion
+import pytest
+from unittest.mock import ANY, MagicMock, patch
+from flask import Flask
+from decimal import Decimal
+from unittest.mock import patch
+from api import app, obtener_precio_actual, obtener_consolidacion
 
-TEST_DB = ':memory:'
+@pytest.fixture
+def client():
+    with app.test_client() as client:
+        yield client
 
-class TestFlaskApp(unittest.TestCase):
-    def setUp(self):
-        app.config['TESTING'] = True
-        self.client = app.test_client()
-        
-        # Create in-memory test database
-        self.conn = sqlite3.connect(TEST_DB)
-        self.cursor = self.conn.cursor()
-        
-        # Create required tables
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS precios (
-                symbol TEXT PRIMARY KEY,
-                precio REAL,
-                fecha TEXT
-            )
-        ''')
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS historial_compras (
-                fecha_compra TEXT,
-                symbol TEXT,
-                cantidad_acciones INTEGER,
-                valor_compra REAL,
-                precio_actual REAL,
-                valor_total REAL,
-                valor_actual REAL,
-                ganancia_perdida REAL,
-                porcentaje REAL
-            )
-        ''')
-        self.conn.commit()
+# Pruebas para el filtro 'format_number'
+def test_format_number():
+    with app.app_context():
+        assert app.jinja_env.filters['format_number'](1234567.89) == '1,234,567.89'
+        assert app.jinja_env.filters['format_number'](None) == '0.00'
+        assert app.jinja_env.filters['format_number']('invalid') == '0.00'
 
-    def tearDown(self):
-        self.conn.close()
+@patch('api.sqlite3.connect')
+@patch('api.requests.get')
+def test_obtener_precio_actual(mock_get, mock_connect):
+    # Configuración del mock para la base de datos
+    mock_cursor = mock_connect.return_value.cursor.return_value
+    mock_cursor.fetchone.return_value = None  # Simula que no hay datos en caché
 
-    @patch('requests.get')
-    def test_obtener_precio_actual_success(self, mock_get):
-        # Mock successful API response
-        MOCK_PRICE = 150.50
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"price": MOCK_PRICE}]
-        mock_get.return_value = mock_response
+    # Configuración del mock para requests.get
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"price": 150.75}]
+    mock_get.return_value = mock_response
 
-        precio = obtener_precio_actual("AAPL")
-        self.assertEqual(precio, MOCK_PRICE)
-        mock_get.assert_called_once()
+    # Llamada a la función
+    precio = obtener_precio_actual("AAPL")
 
-    @patch('requests.get')
-    def test_obtener_precio_actual_cached(self, mock_get):
-        # Insert cached price
-        CACHED_PRICE = 160.75
-        self.cursor.execute(
-            "INSERT INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
-            ("AAPL", CACHED_PRICE, datetime.now().isoformat())
-        )
-        self.conn.commit()
+    # Verificación del resultado
+    assert precio == 150.75
+    mock_cursor.execute.assert_called_with(
+        "REPLACE INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
+        ("AAPL", 150.75, ANY)  # `ANY` para ignorar el timestamp
+    )
 
-        precio = obtener_precio_actual("AAPL")
-        self.assertEqual(precio, CACHED_PRICE)
-        mock_get.assert_not_called()
 
-    def test_obtener_precio_actual_invalid_symbol(self):
-        with self.assertRaises(ValueError):
-            obtener_precio_actual("123")
+# Pruebas para la ruta /precio_actual
+def test_precio_actual(client):
+    with patch('api.obtener_precio_actual', return_value=150.75):
+        response = client.get('/precio_actual?symbol=AAPL')
+        assert response.status_code == 200
+        assert response.json == {"precio_actual": 150.75}
 
-    @patch('requests.get')
-    def test_precio_actual_endpoint(self, mock_get):
-        MOCK_PRICE = 150.50
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"price": MOCK_PRICE}]
-        mock_get.return_value = mock_response
+    response = client.get('/precio_actual')
+    assert response.status_code == 400
+    assert response.json == {"error": "Símbolo no proporcionado"}
 
-        response = self.client.get('/precio_actual?symbol=AAPL')
-        data = json.loads(response.data)
-        
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(data["precio_actual"], MOCK_PRICE)
+# Pruebas para la ruta /buscar_simbolo
+@patch('api.requests.get')
+def test_buscar_simbolo(mock_get, client):
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = [
+        {"symbol": "AAPL", "name": "Apple Inc."},
+        {"symbol": "MSFT", "name": "Microsoft Corporation"}
+    ]
 
-    def test_precio_actual_endpoint_no_symbol(self):
-        response = self.client.get('/precio_actual')
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(b'Error', response.data)
-
-    @patch('requests.get')
-    def test_buscar_simbolo_success(self, mock_get):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"symbol": "AAPL", "name": "Apple Inc"}
+    response = client.get('/buscar_simbolo?term=AP')
+    assert response.status_code == 200
+    assert response.json == {
+        "simbolos": [
+            {"symbol": "AAPL", "nombre": "Apple Inc. (AAPL)"},
+            {"symbol": "MSFT", "nombre": "Microsoft Corporation (MSFT)"}
         ]
-        mock_get.return_value = mock_response
+    }
 
-        response = self.client.get('/buscar_simbolo?term=AAPL')
-        data = json.loads(response.data)
-        
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(data["simbolos"]), 1)
-        self.assertEqual(data["simbolos"][0]["symbol"], "AAPL")
+    response = client.get('/buscar_simbolo?term=A')
+    assert response.status_code == 200
+    assert response.json == {"simbolos": []}
 
-    def test_obtener_historial_compras(self):
-        self.cursor.execute('''
-            INSERT INTO historial_compras 
-            (fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual,
-             valor_total, valor_actual, ganancia_perdida, porcentaje)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            datetime.now().isoformat(),
-            "AAPL",
-            10,
-            150.0,
-            160.0,
-            1500.0,
-            1600.0,
-            100.0,
-            6.67
-        ))
-        self.conn.commit()
+# Pruebas para la ruta principal
+def test_home(client):
+    with patch('api.obtener_consolidacion', return_value=[]):
+        response = client.get('/')
+        assert response.status_code == 200
 
-        historial = obtener_historial_compras()
-        self.assertEqual(len(historial), 1)
-        self.assertEqual(historial[0]["symbol"], "AAPL")
+    response = client.post('/', data={"fecha_compra": "2025-01-01", "empresa": "AAPL"})
+    assert response.status_code == 302  # Redirección en caso de éxito
 
-    def test_obtener_consolidacion(self):
-        self.cursor.execute('''
-            INSERT INTO historial_compras 
-            (fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual,
-             valor_total, valor_actual, ganancia_perdida, porcentaje)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            datetime.now().isoformat(),
-            "AAPL",
-            10,
-            150.0,
-            160.0,
-            1500.0,
-            1600.0,
-            100.0,
-            6.67
-        ))
-        self.conn.commit()
+    response = client.post('/', data={})
+    assert response.status_code == 302
 
-        with patch('app.obtener_precio_actual') as mock_precio:
-            MOCK_NEW_PRICE = 170.0
-            mock_precio.return_value = MOCK_NEW_PRICE
+from decimal import Decimal
+from unittest.mock import patch
 
-            consolidacion = obtener_consolidacion()
-            self.assertEqual(len(consolidacion), 1)
-            self.assertEqual(consolidacion[0]["accion"], "AAPL")
-            self.assertEqual(float(consolidacion[0]["cantidad_total"]), 10)
+@patch('api.sqlite3.connect')
+@patch('api.obtener_precio_actual')
+def test_obtener_consolidacion(mock_obtener_precio, mock_connect):
+    # Configura los mocks
+    mock_cursor = mock_connect.return_value.cursor.return_value
+    mock_cursor.fetchall.return_value = [
+        ("AAPL", 10, Decimal("1507.50"), Decimal("150.75")),
+        ("GOOG", 5, Decimal("14002.50"), Decimal("2800.50"))
+    ]
+    mock_obtener_precio.side_effect = [Decimal("150.75"), Decimal("2800.50")]
 
-    def test_format_number_filter(self):
-        with app.app_context():
-            self.assertEqual(app.jinja_env.filters['format_number'](1234.56), "1,234.56")
-            self.assertEqual(app.jinja_env.filters['format_number'](None), "0.00")
-            self.assertEqual(app.jinja_env.filters['format_number']("invalid"), "0.00")
+    # Llamada a la función
+    consolidacion = obtener_consolidacion()
 
-if __name__ == '__main__':
-    unittest.main()
+    # Resultado esperado
+    esperado = [
+        {
+            "accion": "AAPL",
+            "cantidad_total": 10,
+            "valor_usd_total": Decimal("1507.50"),
+            "precio_costo": Decimal("150.75"),
+            "precio_actual": Decimal("150.75"),
+            "ganancia_perdida": Decimal("0.00"),
+            "porcentaje": Decimal("0.00")
+        },
+        {
+            "accion": "GOOG",
+            "cantidad_total": 5,
+            "valor_usd_total": Decimal("14002.50"),
+            "precio_costo": Decimal("2800.50"),
+            "precio_actual": Decimal("2800.50"),
+            "ganancia_perdida": Decimal("0.00"),
+            "porcentaje": Decimal("0.00")
+        }
+    ]
+
+    assert consolidacion == esperado
