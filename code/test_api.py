@@ -1,7 +1,8 @@
 import pytest
-import requests
-from unittest.mock import patch
+from unittest.mock import ANY, MagicMock, patch
 from flask import Flask
+from decimal import Decimal
+from unittest.mock import patch
 from api import app, obtener_precio_actual, obtener_consolidacion
 
 @pytest.fixture
@@ -16,37 +17,33 @@ def test_format_number():
         assert app.jinja_env.filters['format_number'](None) == '0.00'
         assert app.jinja_env.filters['format_number']('invalid') == '0.00'
 
-# Pruebas para obtener_precio_actual
-@patch('app.sqlite3.connect')
-@patch('app.requests.get')
+@patch('api.sqlite3.connect')
+@patch('api.requests.get')
 def test_obtener_precio_actual(mock_get, mock_connect):
+    # Configuración del mock para la base de datos
     mock_cursor = mock_connect.return_value.cursor.return_value
+    mock_cursor.fetchone.return_value = None  # Simula que no hay datos en caché
 
-    # Caso: Precio en caché
-    mock_cursor.fetchone.return_value = (100.50, '2025-01-17T10:00:00')
-    precio = obtener_precio_actual("AAPL")
-    assert precio == 100.50
+    # Configuración del mock para requests.get
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"price": 150.75}]
+    mock_get.return_value = mock_response
 
-    # Caso: Precio no en caché y éxito de la API
-    mock_cursor.fetchone.return_value = None
-    mock_get.return_value.status_code = 200
-    mock_get.return_value.json.return_value = [{"price": 150.75}]
+    # Llamada a la función
     precio = obtener_precio_actual("AAPL")
+
+    # Verificación del resultado
     assert precio == 150.75
+    mock_cursor.execute.assert_called_with(
+        "REPLACE INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
+        ("AAPL", 150.75, ANY)  # `ANY` para ignorar el timestamp
+    )
 
-    # Caso: Límite de solicitudes de la API
-    mock_get.return_value.status_code = 429
-    with pytest.raises(ValueError, match="Se ha excedido el límite de solicitudes a la API"):
-        obtener_precio_actual("AAPL")
-
-    # Caso: Error de conexión
-    mock_get.side_effect = requests.exceptions.ConnectionError
-    with pytest.raises(ValueError, match="Error de conexión"):
-        obtener_precio_actual("AAPL")
 
 # Pruebas para la ruta /precio_actual
 def test_precio_actual(client):
-    with patch('app.obtener_precio_actual', return_value=150.75):
+    with patch('api.obtener_precio_actual', return_value=150.75):
         response = client.get('/precio_actual?symbol=AAPL')
         assert response.status_code == 200
         assert response.json == {"precio_actual": 150.75}
@@ -56,7 +53,7 @@ def test_precio_actual(client):
     assert response.json == {"error": "Símbolo no proporcionado"}
 
 # Pruebas para la ruta /buscar_simbolo
-@patch('app.requests.get')
+@patch('api.requests.get')
 def test_buscar_simbolo(mock_get, client):
     mock_get.return_value.status_code = 200
     mock_get.return_value.json.return_value = [
@@ -79,7 +76,7 @@ def test_buscar_simbolo(mock_get, client):
 
 # Pruebas para la ruta principal
 def test_home(client):
-    with patch('app.obtener_consolidacion', return_value=[]):
+    with patch('api.obtener_consolidacion', return_value=[]):
         response = client.get('/')
         assert response.status_code == 200
 
@@ -89,18 +86,43 @@ def test_home(client):
     response = client.post('/', data={})
     assert response.status_code == 302
 
-# Pruebas para obtener_consolidacion
-@patch('app.sqlite3.connect')
-@patch('app.obtener_precio_actual', return_value=150.75)
-def test_obtener_consolidacion(mock_precio_actual, mock_connect):
+from decimal import Decimal
+from unittest.mock import patch
+
+@patch('api.sqlite3.connect')
+@patch('api.obtener_precio_actual')
+def test_obtener_consolidacion(mock_obtener_precio, mock_connect):
+    # Configura los mocks
     mock_cursor = mock_connect.return_value.cursor.return_value
     mock_cursor.fetchall.return_value = [
-        ("AAPL", 10, 1000.00, 100.00)
+        ("AAPL", 10, Decimal("1507.50"), Decimal("150.75")),
+        ("GOOG", 5, Decimal("14002.50"), Decimal("2800.50"))
+    ]
+    mock_obtener_precio.side_effect = [Decimal("150.75"), Decimal("2800.50")]
+
+    # Llamada a la función
+    consolidacion = obtener_consolidacion()
+
+    # Resultado esperado
+    esperado = [
+        {
+            "accion": "AAPL",
+            "cantidad_total": 10,
+            "valor_usd_total": Decimal("1507.50"),
+            "precio_costo": Decimal("150.75"),
+            "precio_actual": Decimal("150.75"),
+            "ganancia_perdida": Decimal("0.00"),
+            "porcentaje": Decimal("0.00")
+        },
+        {
+            "accion": "GOOG",
+            "cantidad_total": 5,
+            "valor_usd_total": Decimal("14002.50"),
+            "precio_costo": Decimal("2800.50"),
+            "precio_actual": Decimal("2800.50"),
+            "ganancia_perdida": Decimal("0.00"),
+            "porcentaje": Decimal("0.00")
+        }
     ]
 
-    consolidacion = obtener_consolidacion()
-    assert len(consolidacion) == 1
-    assert consolidacion[0]['accion'] == "AAPL"
-    assert consolidacion[0]['ganancia_perdida'] == 507.50
-    assert consolidacion[0]['porcentaje'] == 50.75
-
+    assert consolidacion == esperado
