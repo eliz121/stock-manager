@@ -1,110 +1,106 @@
 import pytest
-import sqlite3
-from api import app, obtener_precio_actual, obtener_historial_compras
+import requests
+from unittest.mock import patch
+from flask import Flask
+from api import app, obtener_precio_actual, obtener_consolidacion
 
-# Crear un cliente de prueba para interactuar con la aplicación Flask
 @pytest.fixture
 def client():
-    app.config['TESTING'] = True
-    app.config['DATABASE'] = 'test.db'  # Utilizar una base de datos en memoria para las pruebas
     with app.test_client() as client:
         yield client
 
-# Limpiar la base de datos de prueba antes y después de cada prueba
-@pytest.fixture(autouse=True)
-def clean_db():
-    conn = sqlite3.connect('test.db')
-    cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS precios (symbol TEXT, precio REAL, fecha TEXT)")
-    cursor.execute("CREATE TABLE IF NOT EXISTS historial_compras (fecha_compra TEXT, symbol TEXT, cantidad_acciones INTEGER, valor_compra REAL, precio_actual REAL, valor_total REAL, valor_actual REAL, ganancia_perdida REAL, porcentaje REAL)")
-    conn.commit()
-    conn.close()
+# Pruebas para el filtro 'format_number'
+def test_format_number():
+    with app.app_context():
+        assert app.jinja_env.filters['format_number'](1234567.89) == '1,234,567.89'
+        assert app.jinja_env.filters['format_number'](None) == '0.00'
+        assert app.jinja_env.filters['format_number']('invalid') == '0.00'
 
-    yield
+# Pruebas para obtener_precio_actual
+@patch('app.sqlite3.connect')
+@patch('app.requests.get')
+def test_obtener_precio_actual(mock_get, mock_connect):
+    mock_cursor = mock_connect.return_value.cursor.return_value
 
-    # Limpiar después de la prueba
-    conn = sqlite3.connect('test.db')
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS precios")
-    cursor.execute("DROP TABLE IF EXISTS historial_compras")
-    conn.commit()
-    conn.close()
-
-# Prueba para la función obtener_precio_actual
-def test_obtener_precio_actual():
-    # Supongamos que el símbolo "AAPL" tiene un precio válido
+    # Caso: Precio en caché
+    mock_cursor.fetchone.return_value = (100.50, '2025-01-17T10:00:00')
     precio = obtener_precio_actual("AAPL")
-    assert precio is not None
-    assert isinstance(precio, float)
+    assert precio == 100.50
 
-# Prueba para la ruta /precio_actual en la aplicación Flask
+    # Caso: Precio no en caché y éxito de la API
+    mock_cursor.fetchone.return_value = None
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = [{"price": 150.75}]
+    precio = obtener_precio_actual("AAPL")
+    assert precio == 150.75
+
+    # Caso: Límite de solicitudes de la API
+    mock_get.return_value.status_code = 429
+    with pytest.raises(ValueError, match="Se ha excedido el límite de solicitudes a la API"):
+        obtener_precio_actual("AAPL")
+
+    # Caso: Error de conexión
+    mock_get.side_effect = requests.exceptions.ConnectionError
+    with pytest.raises(ValueError, match="Error de conexión"):
+        obtener_precio_actual("AAPL")
+
+# Pruebas para la ruta /precio_actual
 def test_precio_actual(client):
-    # Realiza una solicitud GET a la ruta /precio_actual con el símbolo "AAPL"
-    response = client.get('/precio_actual?symbol=AAPL')
+    with patch('app.obtener_precio_actual', return_value=150.75):
+        response = client.get('/precio_actual?symbol=AAPL')
+        assert response.status_code == 200
+        assert response.json == {"precio_actual": 150.75}
+
+    response = client.get('/precio_actual')
+    assert response.status_code == 400
+    assert response.json == {"error": "Símbolo no proporcionado"}
+
+# Pruebas para la ruta /buscar_simbolo
+@patch('app.requests.get')
+def test_buscar_simbolo(mock_get, client):
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = [
+        {"symbol": "AAPL", "name": "Apple Inc."},
+        {"symbol": "MSFT", "name": "Microsoft Corporation"}
+    ]
+
+    response = client.get('/buscar_simbolo?term=AP')
     assert response.status_code == 200
-    assert 'precio_actual' in response.json
+    assert response.json == {
+        "simbolos": [
+            {"symbol": "AAPL", "nombre": "Apple Inc. (AAPL)"},
+            {"symbol": "MSFT", "nombre": "Microsoft Corporation (MSFT)"}
+        ]
+    }
 
-# Prueba para la ruta /historial_compras
-def test_historial_compras(client):
-    # Realiza una solicitud GET a la ruta del historial de compras
-    response = client.get('/')
+    response = client.get('/buscar_simbolo?term=A')
     assert response.status_code == 200
-    # Comprobar si los datos del historial están presentes
-    assert 'historial' in response.data.decode()
+    assert response.json == {"simbolos": []}
 
-# Prueba para el proceso de agregar una compra
-def test_agregar_compra(client):
-    # Simular una compra con datos válidos
-    data = {
-        'fecha_compra': '2024-11-29',
-        'empresa': 'AAPL',
-        'cantidad_acciones': 10,
-        'valor_compra': 150.00
-    }
+# Pruebas para la ruta principal
+def test_home(client):
+    with patch('app.obtener_consolidacion', return_value=[]):
+        response = client.get('/')
+        assert response.status_code == 200
 
-    # Enviar los datos a la ruta principal que maneja la compra
-    response = client.post('/', data=data)
+    response = client.post('/', data={"fecha_compra": "2025-01-01", "empresa": "AAPL"})
+    assert response.status_code == 302  # Redirección en caso de éxito
 
-    # Comprobar que la respuesta no es un error y la compra fue procesada correctamente
-    assert response.status_code == 200
-    assert b'Compra registrada exitosamente' in response.data.decode()
+    response = client.post('/', data={})
+    assert response.status_code == 302
 
-# Prueba para la validación de errores (cantidad de acciones negativa)
-def test_error_cantidad_acciones(client):
-    data = {
-        'fecha_compra': '2024-11-29',
-        'empresa': 'AAPL',
-        'cantidad_acciones': -10,
-        'valor_compra': 150.00
-    }
-    response = client.post('/', data=data)
-    assert 'Error: La cantidad no es válida.' in response.data.decode()
+# Pruebas para obtener_consolidacion
+@patch('app.sqlite3.connect')
+@patch('app.obtener_precio_actual', return_value=150.75)
+def test_obtener_consolidacion(mock_precio_actual, mock_connect):
+    mock_cursor = mock_connect.return_value.cursor.return_value
+    mock_cursor.fetchall.return_value = [
+        ("AAPL", 10, 1000.00, 100.00)
+    ]
 
-# Prueba para la validación de errores (valor de compra negativo)
-def test_error_valor_compra(client):
-    data = {
-        'fecha_compra': '2024-11-29',
-        'empresa': 'AAPL',
-        'cantidad_acciones': 10,
-        'valor_compra': -150.00
-    }
-    response = client.post('/', data=data)
-    assert 'Error: El valor de compra no es válido.' in response.data.decode()
-
-# Prueba para la validación de errores (símbolo de empresa inválido)
-def test_error_simbolo_empresa(client):
-    data = {
-        'fecha_compra': '2024-11-29',
-        'empresa': 'INVALID',
-        'cantidad_acciones': 10,
-        'valor_compra': 150.00
-    }
-    response = client.post('/', data=data)
-    assert 'Error: El símbolo de la empresa no es válido o no se pudo obtener el precio actual.' in response.data.decode()
-
-# Prueba para el historial de compras desde la base de datos
-def test_obtener_historial_compras():
-    historial = obtener_historial_compras()
-    assert isinstance(historial, list)
-    assert len(historial) > 0  # Comprobar que el historial no está vacío
+    consolidacion = obtener_consolidacion()
+    assert len(consolidacion) == 1
+    assert consolidacion[0]['accion'] == "AAPL"
+    assert consolidacion[0]['ganancia_perdida'] == 507.50
+    assert consolidacion[0]['porcentaje'] == 50.75
 
