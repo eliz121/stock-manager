@@ -289,22 +289,6 @@ def obtener_consolidacion():
     finally:
         conn.close()
 
-@app.route('/consolidacion')
-def vista_consolidacion():
-    try:
-        consolidacion = obtener_consolidacion()
-        # Asegurarse de que los valores numéricos sean float
-        for item in consolidacion:
-            item['valor_usd_total'] = float(item['valor_usd_total'])
-            item['ganancia_perdida'] = float(item['ganancia_perdida'])
-            item['porcentaje'] = float(item['porcentaje'])
-            item['precio_actual'] = float(item['precio_actual'])
-            item['precio_costo'] = float(item['precio_costo'])
-        return render_template("consolidacion.html", consolidacion=consolidacion)
-    except Exception as e:
-        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
-        return render_template("consolidacion.html", consolidacion=[])
-    
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)
     print("Servidor corriendo en http://127.0.0.1:5000")

@@ -126,3 +126,4 @@ def test_obtener_consolidacion(mock_obtener_precio, mock_connect):
     ]
 
     assert consolidacion == esperado
+
