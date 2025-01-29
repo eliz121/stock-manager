@@ -9,7 +9,6 @@ import os
 import locale
 from decimal import Decimal
 
-
 load_dotenv()
 API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
 
@@ -61,10 +60,9 @@ def obtener_precio_actual(symbol):
         response = requests.get(API_URL, params={"apikey": API_KEY}, timeout=5)
         
         if response.status_code == 429:
-            raise ValueError("Se ha excedido el límite de solicitudes a la API")
+            raise ValueError("Se ha excedido el límite de solicitudes a la API")  # Cambiado aquí
         elif response.status_code != 200:
             raise ValueError(f"Error al obtener datos de la API: {response.status_code}")
-
         data = response.json()
 
         if not data or not isinstance(data, list) or len(data) == 0:
@@ -106,8 +104,15 @@ def precio_actual():
             return jsonify({"error": "No se pudo obtener el precio actual"}), 404
 
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
+        error_message = str(e)
+    
+    # Manejo específico para el error de límite de solicitudes
+        if "límite de solicitudes" in error_message.lower():
+            return jsonify({"error": error_message}), 429
+    
+        return jsonify({"error": error_message}), 400  # Código 400 si es otro ValueError
+    
+    except Exception:
         return jsonify({"error": "Error interno del servidor"}), 500
 
 @app.route('/buscar_simbolo', methods=['GET'])
