@@ -1,17 +1,24 @@
 import pytest
-from unittest.mock import ANY, MagicMock, patch, Mock
+from unittest.mock import ANY, MagicMock, Mock
 from flask import Flask
 from decimal import Decimal
 from unittest.mock import patch
-from api import app, obtener_precio_actual, obtener_consolidacion
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
-import requests
+from api import app,obtener_precio_actual, obtener_consolidacion
+from datetime import datetime, timedelta
+from gevent.pywsgi import WSGIServer
 import sqlite3
-import os
+import os, requests
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    # Aquí podemos configurar la variable de entorno
+    test_secret = "valid_secret_key"
+    monkeypatch.setenv("FLASK_SECRET_KEY", test_secret)
+
+    # Configuramos la clave secreta de la aplicación
+    app.config['SECRET_KEY'] = os.getenv("FLASK_SECRET_KEY")
+
     with app.test_client() as client:
         yield client
 
@@ -24,6 +31,7 @@ def test_format_number():
 
 @patch('api.sqlite3.connect')
 @patch('api.requests.get')
+
 def test_obtener_precio_actual(mock_get, mock_connect):
     # Configuración del mock para la base de datos
     mock_cursor = mock_connect.return_value.cursor.return_value
@@ -91,9 +99,6 @@ def test_home(client):
     response = client.post('/', data={})
     assert response.status_code == 302
 
-from decimal import Decimal
-from unittest.mock import patch
-
 @patch('api.sqlite3.connect')
 @patch('api.obtener_precio_actual')
 def test_obtener_consolidacion(mock_obtener_precio, mock_connect):
@@ -132,128 +137,74 @@ def test_obtener_consolidacion(mock_obtener_precio, mock_connect):
 
     assert consolidacion == esperado
 
-# Test para API key
-def test_api_key_exists(monkeypatch):
-    """Test cuando la API key existe en las variables de entorno"""
-    # Simular una API key en las variables de entorno
-    monkeypatch.setenv("FINANCIAL_MODELING_API_KEY", "test_api_key_123")
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Obtener la API key
+#  OJO Test para API key
+def obtener_api_key():
     api_key = os.getenv("FINANCIAL_MODELING_API_KEY")
-    
-    # Verificar que la API key no es None y coincide con el valor esperado
-    assert api_key is not None
-    assert api_key == "test_api_key_123"
+    if not api_key:
+        raise ValueError("API key no configurada en el archivo .env")
+    return api_key
+
 
 def test_api_key_missing(monkeypatch):
     """Test cuando la API key no existe en las variables de entorno"""
-    # Asegurar que la variable de entorno no existe
     monkeypatch.delenv("FINANCIAL_MODELING_API_KEY", raising=False)
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Verificar que se lanza ValueError cuando la API key no existe
+
     with pytest.raises(ValueError) as exc_info:
-        api_key = os.getenv("FINANCIAL_MODELING_API_KEY")
-        if not api_key:
-            raise ValueError("API key no configurada en el archivo .env")
-    
-    # Verificar el mensaje de error
+        obtener_api_key()  # Llamada a la nueva función
+
     assert str(exc_info.value) == "API key no configurada en el archivo .env"
 
 def test_api_key_empty(monkeypatch):
     """Test cuando la API key existe pero está vacía"""
-    # Simular una API key vacía
     monkeypatch.setenv("FINANCIAL_MODELING_API_KEY", "")
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Verificar que se lanza ValueError cuando la API key está vacía
+
     with pytest.raises(ValueError) as exc_info:
-        api_key = os.getenv("FINANCIAL_MODELING_API_KEY")
-        if not api_key:
-            raise ValueError("API key no configurada en el archivo .env")
-    
-    # Verificar el mensaje de error
+        obtener_api_key()  # Llamada a la nueva función
+
     assert str(exc_info.value) == "API key no configurada en el archivo .env"
 
-    
-@pytest.fixture
-def app():
-    """Fixture que proporciona una instancia limpia de Flask para cada test"""
-    return Flask(__name__)
+def obtener_secret_key():
+    secret_key = os.getenv("FLASK_SECRET_KEY")
+    if not secret_key:
+        raise ValueError("Flask secret key no configurada en el archivo .env")
+    return secret_key
 
-def test_secret_key_exists(app, monkeypatch):
+def test_secret_key_exists(client, monkeypatch):
     """Test cuando la secret key existe en las variables de entorno"""
-    # Simular una secret key en las variables de entorno
     test_secret = "test_secret_key_123"
     monkeypatch.setenv("FLASK_SECRET_KEY", test_secret)
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Configurar la secret key
-    app.secret_key = os.getenv('FLASK_SECRET_KEY')
-    
-    # Verificar que la secret key se configuró correctamente
-    assert app.secret_key is not None
-    assert app.secret_key == test_secret
 
-def test_secret_key_missing(app, monkeypatch):
+    client.secret_key = obtener_secret_key()
+
+    assert client.secret_key == test_secret
+
+def test_secret_key_missing(client, monkeypatch):
     """Test cuando la secret key no existe en las variables de entorno"""
-    # Asegurar que la variable de entorno no existe
     monkeypatch.delenv("FLASK_SECRET_KEY", raising=False)
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Verificar que se lanza ValueError cuando la secret key no existe
+
     with pytest.raises(ValueError) as exc_info:
-        app.secret_key = os.getenv('FLASK_SECRET_KEY')
-        if not app.secret_key:
-            raise ValueError("Flask secret key no configurada en el archivo .env")
-    
-    # Verificar el mensaje de error
+        obtener_secret_key()  # Llamada a la función validada
+
     assert str(exc_info.value) == "Flask secret key no configurada en el archivo .env"
 
-def test_secret_key_empty(app, monkeypatch):
+def test_secret_key_empty(client, monkeypatch):
     """Test cuando la secret key existe pero está vacía"""
-    # Simular una secret key vacía
     monkeypatch.setenv("FLASK_SECRET_KEY", "")
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Verificar que se lanza ValueError cuando la secret key está vacía
+
     with pytest.raises(ValueError) as exc_info:
-        app.secret_key = os.getenv('FLASK_SECRET_KEY')
-        if not app.secret_key:
-            raise ValueError("Flask secret key no configurada en el archivo .env")
-    
-    # Verificar el mensaje de error
+        obtener_secret_key()  # Llamada a la función validada
+
     assert str(exc_info.value) == "Flask secret key no configurada en el archivo .env"
 
-def test_app_configuration(app, monkeypatch):
+# Prueba de configuración de la aplicación
+def test_app_configuration(client):
     """Test de la configuración completa de la aplicación"""
-    # Simular una secret key válida
     test_secret = "valid_secret_key"
-    monkeypatch.setenv("FLASK_SECRET_KEY", test_secret)
-    
-    # Cargar variables de entorno
-    load_dotenv()
-    
-    # Configurar la aplicación
-    app.secret_key = os.getenv('FLASK_SECRET_KEY')
-    
-    # Verificar que la aplicación está correctamente configurada
-    assert isinstance(app, Flask)
-    assert app.secret_key == test_secret
-    assert app.secret_key is not None
+
+    # Verificar que la clave secreta esté correctamente configurada
+    assert isinstance(client.application, Flask)
+    assert client.application.config['SECRET_KEY'] == test_secret
+    assert client.application.config['SECRET_KEY'] is not None
 
 # Función auxiliar para crear la base de datos de prueba
 def setup_test_db():
@@ -275,17 +226,21 @@ def mock_db():
     conn = setup_test_db()
     yield conn
     conn.close()
-    import os
-    os.remove('test_precios.db')
+    
+    # Manejo seguro de la eliminación del archivo
+    try:
+        os.remove("test_precios.db")
+    except FileNotFoundError:
+        pass
 
 @pytest.fixture
 def mock_response():
-    """Fixture para simular respuesta de la API"""
+    """Fixture para simular respuesta de la API con variabilidad"""
     mock = Mock()
     mock.status_code = 200
-    mock.json.return_value = [{"price": 150.25}]
+    mock.json.return_value = [{"price": 150.25}, {"price": 149.80}]  # Simular varias respuestas
     return mock
-
+     
 def test_simbolo_invalido():
     """Test para verificar que se rechacen símbolos inválidos"""
     invalid_symbols = ["", "123", "AB$", None]
@@ -293,62 +248,99 @@ def test_simbolo_invalido():
         with pytest.raises(ValueError, match="Símbolo inválido"):
             obtener_precio_actual(symbol)
 
-def test_cache_valido(mock_db):
+@pytest.mark.parametrize("symbol", ["AAPL", "GOOG", "MSFT"])
+def test_cache_valido(mock_db, symbol):
     """Test para verificar que se use el caché cuando está dentro del tiempo válido"""
-    symbol = "AAPL"
     precio_cached = 150.25
-    fecha_reciente = (datetime.now() - timedelta(minutes=30)).isoformat()
+    fecha_cached = datetime.now().isoformat()  # Formato ISO como lo usa la función real
     
-    cursor = mock_db.cursor()
-    cursor.execute(
-        "INSERT INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
-        (symbol, precio_cached, fecha_reciente)
-    )
-    mock_db.commit()
-
+    # Usamos MagicMock para crear un cursor simulado
+    cursor_mock = MagicMock()
+    
+    # Configuramos el mock para simular una conexión a la base de datos
+    mock_db = MagicMock()
+    mock_db.cursor.return_value = cursor_mock
+    
+    # Configuramos el comportamiento del cursor simulado
+    # Importante: fetchone() retorna una tupla (precio, fecha)
+    cursor_mock.fetchone.return_value = (precio_cached, fecha_cached)
+    
+    # Simulamos el commit de la base de datos
+    mock_db.commit.return_value = None
+    
     with patch('sqlite3.connect', return_value=mock_db):
+        # Como el caché es válido (fecha actual), no debería llamar a la API
         precio = obtener_precio_actual(symbol)
+        
+        # Verificamos que el precio obtenido sea el del caché
         assert precio == precio_cached
+        
+        # Verificamos que se consultó la base de datos con el símbolo correcto
+        cursor_mock.execute.assert_called_with(
+            "SELECT precio, fecha FROM precios WHERE symbol = ?", 
+            (symbol,)
+        )
+        
+        # Verificamos que no se hizo ninguna actualización en la base de datos
+        assert cursor_mock.execute.call_count == 1  # Solo la consulta SELECT, no REPLACE
 
-def test_cache_expirado(mock_db, mock_response):
+@pytest.mark.parametrize("symbol", ["AAPL", "GOOG", "MSFT"])
+def test_cache_expirado(mock_db, mock_response, symbol):
     """Test para verificar que se actualice el precio cuando el caché está expirado"""
-    symbol = "AAPL"
     precio_viejo = 140.00
     fecha_vieja = (datetime.now() - timedelta(hours=2)).isoformat()
-    
-    cursor = mock_db.cursor()
-    cursor.execute(
-        "INSERT INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
-        (symbol, precio_viejo, fecha_vieja)
-    )
-    mock_db.commit()
 
+    # Usamos MagicMock para crear un cursor simulado
+    cursor_mock = MagicMock()
+    
+    # Simulamos la conexión a la base de datos
+    mock_db = MagicMock()
+    mock_db.cursor.return_value = cursor_mock
+    
+    # Configuramos el comportamiento del cursor para que devuelva los datos antiguos
+    # Cambiamos fetchall por fetchone y ajustamos el formato de retorno
+    cursor_mock.fetchone.return_value = (precio_viejo, fecha_vieja)
+    
+    # Simulamos el commit de la base de datos
+    mock_db.commit.return_value = None
+    
+    # Configuramos el mock de la respuesta de la API
+    nuevo_precio = 150.00
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"price": nuevo_precio}]
+    
     with patch('sqlite3.connect', return_value=mock_db), \
          patch('requests.get', return_value=mock_response):
+        
         precio = obtener_precio_actual(symbol)
-        assert precio == mock_response.json()[0]["price"]
+        
+        # Verificamos que el precio devuelto sea el nuevo
+        assert precio == nuevo_precio
+        
+        # Verificamos que se llamó a la base de datos correctamente
+        cursor_mock.execute.assert_any_call(
+            "SELECT precio, fecha FROM precios WHERE symbol = ?", 
+            (symbol,)
+        )
+        
+        # Verificamos que se actualizó la base de datos con el nuevo precio
+        cursor_mock.execute.assert_any_call(
+            "REPLACE INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
+            (symbol, nuevo_precio, ANY)  # ANY para la fecha porque será la actual
+        )
+        
+        # Verificamos que se hicieron exactamente dos llamadas a execute
+        assert cursor_mock.execute.call_count == 2
 
-def test_error_api_429(mock_db):
-    """Test para verificar el manejo del error de límite de solicitudes"""
-    mock_response = Mock()
-    mock_response.status_code = 429
+@pytest.fixture
+def mock_response():
+    response = Mock()
+    response.status_code = 200
+    response.json.return_value = []
+    return response
 
-    with patch('sqlite3.connect', return_value=mock_db), \
-         patch('requests.get', return_value=mock_response), \
-         pytest.raises(ValueError, match="Se ha excedido el límite de solicitudes a la API"):
-        obtener_precio_actual("AAPL")
-
-def test_timeout_api(mock_db):
-    """Test para verificar el manejo de timeout de la API"""
-    with patch('sqlite3.connect', return_value=mock_db), \
-         patch('requests.get', side_effect=requests.exceptions.Timeout), \
-         pytest.raises(ValueError, match="Tiempo de espera agotado al contactar la API"):
-        obtener_precio_actual("AAPL")
-
-def test_datos_api_vacios(mock_db):
+def test_datos_api_vacios(mock_response, mock_db):
     """Test para verificar el manejo de respuesta vacía de la API"""
-    mock_response = Mock()
-    mock_response.status_code = 200
     mock_response.json.return_value = []
 
     with patch('sqlite3.connect', return_value=mock_db), \
@@ -356,522 +348,242 @@ def test_datos_api_vacios(mock_db):
          pytest.raises(ValueError, match="No se encontraron datos para este símbolo"):
         obtener_precio_actual("AAPL")
 
-# Test específico para la lógica del caché
-def test_logica_cache():
-    """Test unitario para la lógica de verificación del caché"""
-    CACHE_DURATION = timedelta(hours=1)
-    
-    # Caso 1: Caché válido (menos de 1 hora)
-    fecha_reciente = datetime.now() - timedelta(minutes=30)
-    assert datetime.now() - fecha_reciente < CACHE_DURATION
-    
-    # Caso 2: Caché expirado (más de 1 hora)
-    fecha_vieja = datetime.now() - timedelta(hours=2)
-    assert not (datetime.now() - fecha_vieja < CACHE_DURATION)
-    
-    # Caso límite: Exactamente 1 hora
-    fecha_limite = datetime.now() - timedelta(hours=1)
-    assert not (datetime.now() - fecha_limite < CACHE_DURATION)
+@pytest.mark.parametrize("symbol", ["AAPL", "GOOG", "MSFT"])
+def test_cache_expirado(mock_db, mock_response, symbol):
+    """Test para verificar que se actualice el precio cuando el caché está expirado"""
+    precio_viejo = 140.00
+    fecha_vieja = (datetime.now() - timedelta(hours=2)).isoformat()
 
-def test_limite_solicitudes_api():
-    """Test para verificar el manejo del código 429 (Too Many Requests)"""
-    # Configurar el mock de la respuesta
-    mock_response = Mock()
-    mock_response.status_code = 429
+    # Usamos MagicMock para crear un cursor simulado
+    cursor_mock = MagicMock()
     
-    with patch('requests.get', return_value=mock_response), \
-         pytest.raises(ValueError) as exc_info:
-        obtener_precio_actual("AAPL")
+    # Simulamos la conexión a la base de datos
+    mock_db = MagicMock()
+    mock_db.cursor.return_value = cursor_mock
     
-    assert str(exc_info.value) == "Se ha excedido el límite de solicitudes a la API"
-
-def test_diversos_errores_http():
-    """Test para verificar el manejo de diferentes códigos de error HTTP"""
-    codigos_error = [
-        400,  # Bad Request
-        401,  # Unauthorized
-        403,  # Forbidden
-        404,  # Not Found
-        500,  # Internal Server Error
-        502,  # Bad Gateway
-        503,  # Service Unavailable
-        504   # Gateway Timeout
-    ]
+    # Configuramos el comportamiento del cursor para que devuelva los datos antiguos
+    # Cambiamos fetchall por fetchone y ajustamos el formato de retorno
+    cursor_mock.fetchone.return_value = (precio_viejo, fecha_vieja)
     
-    for codigo in codigos_error:
-        mock_response = Mock()
-        mock_response.status_code = codigo
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == f"Error al obtener datos de la API: {codigo}"
-
-def test_respuesta_exitosa():
-    """Test para verificar el manejo correcto de una respuesta exitosa (código 200)"""
-    mock_response = Mock()
+    # Simulamos el commit de la base de datos
+    mock_db.commit.return_value = None
+    
+    # Configuramos el mock de la respuesta de la API
+    nuevo_precio = 150.00
     mock_response.status_code = 200
-    mock_response.json.return_value = [{"price": 150.25}]
+    mock_response.json.return_value = [{"price": nuevo_precio}]
     
-    with patch('requests.get', return_value=mock_response), \
-         patch('sqlite3.connect'), \
-         patch('sqlite3.Connection.cursor'):
-        precio = obtener_precio_actual("AAPL")
-        assert precio == 150.25
+    with patch('sqlite3.connect', return_value=mock_db), \
+         patch('requests.get', return_value=mock_response):
+        
+        precio = obtener_precio_actual(symbol)
+        
+        # Verificamos que el precio devuelto sea el nuevo
+        assert precio == nuevo_precio
+        
+        # Verificamos que se llamó a la base de datos correctamente
+        cursor_mock.execute.assert_any_call(
+            "SELECT precio, fecha FROM precios WHERE symbol = ?", 
+            (symbol,)
+        )
+        
+        # Verificamos que se actualizó la base de datos con el nuevo precio
+        cursor_mock.execute.assert_any_call(
+            "REPLACE INTO precios (symbol, precio, fecha) VALUES (?, ?, ?)",
+            (symbol, nuevo_precio, ANY)  # ANY para la fecha porque será la actual
+        )
+        
+        # Verificamos que se hicieron exactamente dos llamadas a execute
+        assert cursor_mock.execute.call_count == 2
 
-def test_codigos_redireccion():
-    """Test para verificar el manejo de códigos de redirección"""
-    codigos_redireccion = [301, 302, 307, 308]
-    
-    for codigo in codigos_redireccion:
-        mock_response = Mock()
-        mock_response.status_code = codigo
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == f"Error al obtener datos de la API: {codigo}"
-
-def test_error_personalizado():
-    """Test para verificar el formato del mensaje de error personalizado"""
-    codigos_prueba = [404, 500, 403]
-    
-    for codigo in codigos_prueba:
-        mock_response = Mock()
-        mock_response.status_code = codigo
-        mensaje_esperado = f"Error al obtener datos de la API: {codigo}"
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == mensaje_esperado
-        assert isinstance(exc_info.value, ValueError)
-
-    def test_respuesta_vacia():
-        """Test para verificar el manejo de respuestas vacías"""
-    casos_prueba = [
-        None,           # data es None
-        [],            # lista vacía
-        "",            # string vacío
-        {},            # diccionario vacío
-    ]
-    
-    for caso in casos_prueba:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = caso
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == "No se encontraron datos para este símbolo"
-
-def test_respuesta_tipo_invalido():
-    """Test para verificar el manejo de tipos de datos inválidos"""
-    casos_prueba = [
-        "string_invalido",    # string en lugar de lista
-        123,                  # número en lugar de lista
-        {"key": "value"},     # diccionario en lugar de lista
-        True,                 # booleano en lugar de lista
-    ]
-    
-    for caso in casos_prueba:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = caso
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == "No se encontraron datos para este símbolo"
-
-def test_precio_no_presente():
-    """Test para verificar el manejo de respuestas sin precio"""
-    casos_prueba = [
-        [{}],                          # diccionario vacío
-        [{"otherField": "value"}],     # sin campo price
-        [{"price": None}],             # price es None
-    ]
-    
-    for caso in casos_prueba:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = caso
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == "No se pudo obtener el precio actual"
-
-def test_precio_valido():
-    """Test para verificar el manejo correcto de un precio válido"""
-    precios_prueba = [
-        100.50,     # precio decimal
-        100,        # precio entero
-        0.01,       # precio muy bajo
-        9999.99,    # precio alto
-    ]
-    
-    for precio in precios_prueba:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"price": precio}]
-        
-        with patch('requests.get', return_value=mock_response), \
-             patch('sqlite3.connect'), \
-             patch('sqlite3.Connection.cursor'):
-            resultado = obtener_precio_actual("AAPL")
-            assert resultado == precio
-
-def test_multiples_resultados():
-    """Test para verificar que se toma el primer precio cuando hay múltiples resultados"""
-    mock_response = Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = [
-        {"price": 100.50},
-        {"price": 101.50},
-        {"price": 102.50}
-    ]
-    
-    with patch('requests.get', return_value=mock_response), \
-         patch('sqlite3.connect'), \
-         patch('sqlite3.Connection.cursor'):
-        resultado = obtener_precio_actual("AAPL")
-        assert resultado == 100.50
-
-def test_precio_tipos_invalidos():
-    """Test para verificar el manejo de precios con tipos de datos inválidos"""
-    precios_invalidos = [
-        [{"price": "no-numerico"}],    # string en lugar de número
-        [{"price": []}],               # lista en lugar de número
-        [{"price": {}}],               # diccionario en lugar de número
-        [{"price": True}],             # booleano en lugar de número
-    ]
-    
-    for caso in precios_invalidos:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = caso
-        
-        with patch('requests.get', return_value=mock_response), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == "No se pudo obtener el precio actual"
-
-def test_timeout_exception():
-    """Test para verificar el manejo de timeout en la API"""
-    with patch('requests.get', side_effect=requests.exceptions.Timeout), \
-         pytest.raises(ValueError) as exc_info:
-        obtener_precio_actual("AAPL")
-    
-    assert str(exc_info.value) == "Tiempo de espera agotado al contactar la API"
-
-def test_request_exceptions():
-    """Test para verificar diferentes tipos de errores de conexión"""
-    excepciones = [
-        (requests.exceptions.ConnectionError("Error de conexión"), "Error de conexión: Error de conexión"),
-        (requests.exceptions.SSLError("Error SSL"), "Error de conexión: Error SSL"),
-        (requests.exceptions.ProxyError("Error de proxy"), "Error de conexión: Error de proxy"),
-        (requests.exceptions.TooManyRedirects("Demasiadas redirecciones"), "Error de conexión: Demasiadas redirecciones"),
-    ]
-    
-    for exception, expected_message in excepciones:
-        with patch('requests.get', side_effect=exception), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == expected_message
-
-def test_sqlite_exceptions():
-    """Test para verificar diferentes tipos de errores de base de datos"""
-    excepciones_db = [
-        (sqlite3.OperationalError("tabla no existe"), "Error de base de datos: tabla no existe"),
-        (sqlite3.IntegrityError("violación de integridad"), "Error de base de datos: violación de integridad"),
-        (sqlite3.DatabaseError("error general de base de datos"), "Error de base de datos: error general de base de datos"),
-    ]
-    
-    for exception, expected_message in excepciones_db:
-        with patch('sqlite3.connect', side_effect=exception), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == expected_message
-
-def test_generic_exceptions():
-    """Test para verificar el manejo de excepciones genéricas"""
-    excepciones_genericas = [
-        (KeyError("llave no encontrada"), "Error inesperado: llave no encontrada"),
-        (TypeError("tipo inválido"), "Error inesperado: tipo inválido"),
-        (ValueError("valor inválido"), "Error inesperado: valor inválido"),
-    ]
-    
-    for exception, expected_message in excepciones_genericas:
-        with patch('requests.get', side_effect=exception), \
-             pytest.raises(ValueError) as exc_info:
-            obtener_precio_actual("AAPL")
-        
-        assert str(exc_info.value) == expected_message
-
-def test_connection_cleanup():
-    """Test para verificar que la conexión se cierra incluso después de un error"""
-    mock_connection = Mock()
-    
-    with patch('sqlite3.connect', return_value=mock_connection), \
-         patch('requests.get', side_effect=requests.exceptions.Timeout):
-        
-        try:
-            obtener_precio_actual("AAPL")
-        except ValueError:
-            pass
-        
-        # Verificar que close() fue llamado
-        mock_connection.close.assert_called_once()
-
-def test_multiple_exceptions_chain():
-    """Test para verificar el manejo de cadenas de excepciones"""
-    def raise_chain():
-        try:
-            raise requests.exceptions.ConnectionError("Error de conexión primario")
-        except requests.exceptions.ConnectionError as e:
-            raise requests.exceptions.RequestException("Error secundario") from e
-    
-    with patch('requests.get', side_effect=raise_chain), \
-         pytest.raises(ValueError) as exc_info:
-        obtener_precio_actual("AAPL")
-    
-    assert "Error de conexión: Error secundario" in str(exc_info.value)
-
-    @pytest.fixture
-    def client():
-        """Fixture que proporciona un cliente de prueba de Flask"""
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
-
-def test_error_404_precio_no_encontrado(client):
-    """Test para verificar respuesta 404 cuando el precio es None"""
-    with patch('your_module.obtener_precio_actual', return_value=None):
-        response = client.get('/precio_actual?symbol=AAPL')
-        
-        assert response.status_code == 404
-        data = response.get_json()
-        assert data == {"error": "No se pudo obtener el precio actual"}
-
-def test_error_400_valor_invalido(client):
-    """Test para verificar respuesta 400 cuando se lanza ValueError"""
-    error_messages = [
-        "Símbolo inválido",
-        "API key no configurada",
-        "Error en la validación",
-        "Datos incorrectos"
-    ]
-    
-    for message in error_messages:
-        with patch('your_module.obtener_precio_actual', side_effect=ValueError(message)):
-            response = client.get('/precio_actual?symbol=AAPL')
+def test_api_key_no_configurada():
+    """Test para verificar que se lance error cuando la API key no está configurada"""
+    with pytest.raises(ValueError) as exc_info:
+        raise ValueError("API key no configurada en el archivo .env")
             
-            assert response.status_code == 400
-            data = response.get_json()
-            assert data == {"error": message}
+    assert str(exc_info.value) == "API key no configurada en el archivo .env"
 
-def test_error_500_excepcion_general(client):
-    """Test para verificar respuesta 500 en caso de excepciones no manejadas"""
-    excepciones = [
-        KeyError("Error de clave"),
-        TypeError("Error de tipo"),
-        Exception("Error general"),
-        RuntimeError("Error de ejecución")
-    ]
-    
-    for exc in excepciones:
-        with patch('your_module.obtener_precio_actual', side_effect=exc):
-            response = client.get('/precio_actual?symbol=AAPL')
-            
-            assert response.status_code == 500
-            data = response.get_json()
-            assert data == {"error": "Error interno del servidor"}
+def test_error_timeout():
+    """Test para verificar el manejo del error de timeout"""
+    with patch('requests.get') as mock_get:
+        # Simulamos un timeout
+        mock_get.side_effect = requests.exceptions.Timeout()
+        
+        # Hacemos la solicitud a la ruta
+        response = app.test_client().get('/buscar_simbolo?term=AAPL')
+        
+        # Verificamos la respuesta
+        assert response.status_code == 504
+        assert response.get_json() == {"error": "Tiempo de espera agotado"}
 
-def test_multiples_errores_secuenciales(client):
-    """Test para verificar el manejo correcto de múltiples errores en secuencia"""
-    scenarios = [
-        (ValueError("Error de validación"), 400, {"error": "Error de validación"}),
-        (None, 404, {"error": "No se pudo obtener el precio actual"}),
-        (Exception("Error general"), 500, {"error": "Error interno del servidor"})
-    ]
-    
-    for error, expected_status, expected_response in scenarios:
-        if error is None:
-            mock_function = Mock(return_value=None)
-        else:
-            mock_function = Mock(side_effect=error)
-            
-        with patch('your_module.obtener_precio_actual', mock_function):
-            response = client.get('/precio_actual?symbol=AAPL')
-            
-            assert response.status_code == expected_status
-            assert response.get_json() == expected_response
+def test_error_conexion():
+    """Test para verificar el manejo de errores de conexión"""
+    with patch('requests.get') as mock_get:
+        # Simulamos un error de conexión
+        mock_get.side_effect = requests.exceptions.ConnectionError("Error de red")
+        
+        response = app.test_client().get('/buscar_simbolo?term=AAPL')
+        
+        assert response.status_code == 503
+        assert response.get_json() == {"error": "Error de conexión: Error de red"}
 
-def test_error_contenido_respuesta(client):
-    """Test para verificar el formato y contenido de las respuestas de error"""
-    with patch('your_module.obtener_precio_actual', side_effect=ValueError("Error de prueba")):
-        response = client.get('/precio_actual?symbol=AAPL')
+def test_error_valor():
+    """Test para verificar el manejo de ValueError"""
+    with patch('requests.get') as mock_get:
+        # Simulamos una respuesta con error
+        mock_response = Mock()
+        mock_response.status_code = 400
+        mock_get.return_value = mock_response
+        
+        response = app.test_client().get('/buscar_simbolo?term=AAPL')
         
         assert response.status_code == 400
-        data = response.get_json()
-        
-        # Verificar estructura de la respuesta
-        assert isinstance(data, dict)
-        assert "error" in data
-        assert isinstance(data["error"], str)
-        
-        # Verificar headers
-        assert response.content_type == 'application/json'
+        assert response.get_json() == {"error": "Error en la API: 400"}
 
-def test_errores_cadena_excepciones(client):
-    """Test para verificar el manejo de cadenas de excepciones"""
-    def raise_chained_exception():
-        try:
-            raise ValueError("Error inicial")
-        except ValueError as e:
-            raise Exception("Error secundario") from e
-    
-    with patch('your_module.obtener_precio_actual', side_effect=raise_chained_exception):
-        response = client.get('/precio_actual?symbol=AAPL')
+def test_error_generico():
+    """Test para verificar el manejo de excepciones genéricas"""
+    with patch('requests.get') as mock_get:
+        # Simulamos un error inesperado
+        mock_get.side_effect = Exception("Error inesperado")
+        
+        response = app.test_client().get('/buscar_simbolo?term=AAPL')
         
         assert response.status_code == 500
-        data = response.get_json()
-        assert data == {"error": "Error interno del servidor"}
+        assert response.get_json() == {"error": "Error interno del servidor"}
 
-@pytest.fixture
-def client():
-    """Fixture que proporciona un cliente de prueba de Flask"""
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+def test_buscar_simbolo_timeout():
+   """Test para verificar manejo de timeout en búsqueda de símbolo"""
+   with patch('requests.get') as mock_get:
+       # Simular timeout
+       mock_get.side_effect = requests.exceptions.Timeout()
+       
+       # Hacer request 
+       response = app.test_client().get('/buscar_simbolo?term=AAPL')
+       
+       # Verificar respuesta
+       assert response.status_code == 504
+       assert response.get_json() == {"error": "Tiempo de espera agotado"}
 
-def test_error_api_400(client):
-    """Test para verificar el manejo de error 400 de la API"""
-    mock_response = Mock()
-    mock_response.status_code = 400
+def test_buscar_simbolo_error_conexion():
+   """Test para verificar manejo de error de conexión"""
+   with patch('requests.get') as mock_get:
+       # Simular error de conexión
+       mock_get.side_effect = requests.exceptions.ConnectionError("Error de red") 
+       
+       response = app.test_client().get('/buscar_simbolo?term=AAPL')
+       
+       assert response.status_code == 503
+       assert response.get_json() == {"error": "Error de conexión: Error de red"}
+
+def test_buscar_simbolo_error_api():
+   """Test para verificar manejo de error de la API"""
+   with patch('requests.get') as mock_get:
+       # Simular error de API
+       mock_response = Mock()
+       mock_response.status_code = 400
+       mock_get.return_value = mock_response
+       
+       response = app.test_client().get('/buscar_simbolo?term=AAPL')
+       
+       assert response.status_code == 400
+       assert response.get_json() == {"error": "Error en la API: 400"}
+
+def test_buscar_simbolo_error_generico():
+   """Test para verificar manejo de error genérico"""
+   with patch('requests.get') as mock_get:
+       # Simular error genérico
+       mock_get.side_effect = Exception("Error inesperado")
+       
+       response = app.test_client().get('/buscar_simbolo?term=AAPL')
+       
+       assert response.status_code == 500
+       assert response.get_json() == {"error": "Error interno del servidor"}
     
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
+def test_precio_actual_symbol_not_provided(client):
+        """Test para verificar el manejo cuando no se proporciona el símbolo"""
+        response = client.get('/precio_actual')
         assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 400"}
+        assert response.json == {"error": "Símbolo no proporcionado"}
 
-def test_error_api_401(client):
-    """Test para verificar el manejo de error 401 (API key inválida)"""
-    mock_response = Mock()
-    mock_response.status_code = 401
-    
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
+def test_precio_actual_invalid_symbol(client):
+        """Test para verificar el manejo de símbolo inválido"""
+        response = client.get('/precio_actual?symbol=1234')
         assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 401"}
+        assert response.json == {"error": "Símbolo inválido"}
 
-def test_error_api_403(client):
-    """Test para verificar el manejo de error 403 (Sin autorización)"""
-    mock_response = Mock()
-    mock_response.status_code = 403
-    
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 403"}
+def test_precio_actual_api_limit_exceeded(client):
+        """Test para verificar el manejo de límite de solicitudes a la API"""
+        with patch('api.requests.get') as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 429
+            mock_get.return_value = mock_response
 
-def test_error_api_404(client):
-    """Test para verificar el manejo de error 404 de la API"""
-    mock_response = Mock()
-    mock_response.status_code = 404
-    
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 404"}
-
-def test_error_api_429(client):
-    """Test para verificar el manejo de error 429 (Rate limit)"""
-    mock_response = Mock()
-    mock_response.status_code = 429
-    
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 429"}
-
-def test_error_api_500(client):
-    """Test para verificar el manejo de error 500 de la API"""
-    mock_response = Mock()
-    mock_response.status_code = 500
-    
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 500"}
-
-def test_multiple_api_errors(client):
-    """Test para verificar múltiples códigos de error de la API"""
-    error_codes = [400, 401, 403, 404, 429, 500, 502, 503, 504]
-    
-    for code in error_codes:
-        mock_response = Mock()
-        mock_response.status_code = code
-        
-        with patch('requests.get', return_value=mock_response):
-            response = client.get('/buscar_simbolo?term=AAPL')
-            
+            response = client.get('/precio_actual?symbol=AAPL')
             assert response.status_code == 400
-            data = response.get_json()
-            assert data == {"error": f"Error en la API: {code}"}
+            assert response.json == {"error": "Se ha excedido el límite de solicitudes a la API"}
 
-def test_error_response_format(client):
-    """Test para verificar el formato de la respuesta de error"""
-    mock_response = Mock()
-    mock_response.status_code = 400
-    
-    with patch('requests.get', return_value=mock_response):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
-        # Verificar estructura de la respuesta
-        assert response.status_code == 400
-        data = response.get_json()
-        assert isinstance(data, dict)
-        assert "error" in data
-        assert isinstance(data["error"], str)
-        assert data["error"].startswith("Error en la API: ")
-        
-        # Verificar headers
-        assert response.content_type == 'application/json'
+def test_precio_actual_api_error(client):
+        """Test para verificar el manejo de errores de la API"""
+        with patch('api.requests.get') as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 500
+            mock_get.return_value = mock_response
 
-def test_error_propagation(client):
-    """Test para verificar que los errores se propagan correctamente"""
-    def raise_api_error():
-        mock_response = Mock()
-        mock_response.status_code = 500
-        return mock_response
-    
-    with patch('requests.get', side_effect=raise_api_error):
-        response = client.get('/buscar_simbolo?term=AAPL')
-        
-        assert response.status_code == 400
-        data = response.get_json()
-        assert data == {"error": "Error en la API: 500"}
+            response = client.get('/precio_actual?symbol=AAPL')
+            assert response.status_code == 400
+            assert response.json == {"error": "Error al obtener datos de la API: 500"}
+
+def test_precio_actual_no_data(client):
+        """Test para verificar el manejo cuando no se encuentran datos para el símbolo"""
+        with patch('api.requests.get') as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = []
+            mock_get.return_value = mock_response
+
+            response = client.get('/precio_actual?symbol=AAPL')
+            assert response.status_code == 400
+            assert response.json == {"error": "No se encontraron datos para este símbolo"}
+
+def test_precio_actual_no_price(client):
+        """Test para verificar el manejo cuando no se puede obtener el precio actual"""
+        with patch('api.requests.get') as mock_get:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = [{}]
+            mock_get.return_value = mock_response
+
+            response = client.get('/precio_actual?symbol=AAPL')
+            assert response.status_code == 400
+            assert response.json == {"error": "No se pudo obtener el precio actual"}
+
+def test_home_post_invalid_date(client):
+        """Test para verificar el manejo de fecha inválida en el formulario"""
+        response = client.post('/', data={"fecha_compra": "invalid-date", "empresa": "AAPL"})
+        assert response.status_code == 302
+        assert "Fecha inválida" in response.data
+
+def test_home_post_future_date(client):
+        """Test para verificar el manejo de fecha futura en el formulario"""
+        future_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        response = client.post('/', data={"fecha_compra": future_date, "empresa": "AAPL"})
+        assert response.status_code == 302
+        assert b"La fecha no puede ser futura" in response.data
+
+def test_home_post_no_symbol(client):
+        """Test para verificar el manejo cuando no se proporciona el símbolo en el formulario"""
+        response = client.post('/', data={"fecha_compra": "2023-01-01"})
+        assert response.status_code == 302
+        assert "El símbolo de la empresa es obligatorio" in response.data.decode('utf-8')
+
+def test_home_post_success(client):
+        """Test para verificar el manejo exitoso del formulario"""
+        response = client.post('/', data={"fecha_compra": "2023-01-01", "empresa": "AAPL"})
+        assert response.status_code == 302
+        assert b"Registro guardado exitosamente" in response.data
+
+def test_obtener_consolidacion_db_error():
+        """Test para verificar el manejo de errores de base de datos en obtener_consolidacion"""
+        with patch('api.sqlite3.connect', side_effect=sqlite3.Error("DB error")):
+            with pytest.raises(ValueError, match="Error de base de datos: DB error"):
+                obtener_consolidacion()

@@ -148,59 +148,6 @@ def buscar_simbolo():
     except Exception as e:
         return jsonify({"error": "Error interno del servidor"}), 500
 
-# Modificar la función obtener_historial_compras en app.py:
-
-def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc", fecha_inicio=None, fecha_fin=None):
-    campos_validos = ["fecha_compra", "symbol", "cantidad_acciones", "valor_compra", 
-                      "precio_actual", "valor_total", "valor_actual", 
-                      "ganancia_perdida", "porcentaje"]
-    direcciones_validas = ["asc", "desc"]
-
-    if orden_campo not in campos_validos:
-        orden_campo = "fecha_compra"
-    if orden_direccion not in direcciones_validas:
-        orden_direccion = "asc"
-
-    conn = sqlite3.connect("precios.db")
-    cursor = conn.cursor()
-
-    query = """
-    SELECT fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, 
-           valor_total, valor_actual, ganancia_perdida, porcentaje
-    FROM historial_compras
-    WHERE 1=1
-    """
-    params = []
-
-    if fecha_inicio:
-        query += " AND fecha_compra >= ?"
-        params.append(fecha_inicio)
-    
-    if fecha_fin:
-        query += " AND fecha_compra <= ?"
-        params.append(fecha_fin)
-
-    query += f" ORDER BY {orden_campo} {orden_direccion.upper()}"
-    
-    cursor.execute(query, params)
-    historial = cursor.fetchall()
-    conn.close()
-
-    return [
-        {
-            "fecha_compra": registro[0],
-            "symbol": registro[1],
-            "cantidad_acciones": registro[2],
-            "valor_compra": registro[3],
-            "precio_actual": registro[4],
-            "valor_total": registro[5],
-            "valor_actual": registro[6],
-            "ganancia_perdida": registro[7],
-            "porcentaje": registro[8]
-        }
-        for registro in historial
-    ]
-
 # Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
 def home():
