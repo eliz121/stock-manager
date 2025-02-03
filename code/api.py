@@ -9,7 +9,6 @@ import os
 import locale
 from decimal import Decimal
 
-
 load_dotenv()
 API_KEY = os.getenv("FINANCIAL_MODELING_API_KEY")
 
@@ -61,10 +60,9 @@ def obtener_precio_actual(symbol):
         response = requests.get(API_URL, params={"apikey": API_KEY}, timeout=5)
         
         if response.status_code == 429:
-            raise ValueError("Se ha excedido el límite de solicitudes a la API")
+            raise ValueError("Se ha excedido el límite de solicitudes a la API")  # Cambiado aquí
         elif response.status_code != 200:
             raise ValueError(f"Error al obtener datos de la API: {response.status_code}")
-
         data = response.json()
 
         if not data or not isinstance(data, list) or len(data) == 0:
@@ -106,8 +104,15 @@ def precio_actual():
             return jsonify({"error": "No se pudo obtener el precio actual"}), 404
 
     except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
+        error_message = str(e)
+    
+    # Manejo específico para el error de límite de solicitudes
+        if "límite de solicitudes" in error_message.lower():
+            return jsonify({"error": error_message}), 429
+    
+        return jsonify({"error": error_message}), 400  # Código 400 si es otro ValueError
+    
+    except Exception:
         return jsonify({"error": "Error interno del servidor"}), 500
 
 @app.route('/buscar_simbolo', methods=['GET'])
@@ -147,59 +152,6 @@ def buscar_simbolo():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": "Error interno del servidor"}), 500
-
-# Modificar la función obtener_historial_compras en app.py:
-
-def obtener_historial_compras(orden_campo="fecha_compra", orden_direccion="asc", fecha_inicio=None, fecha_fin=None):
-    campos_validos = ["fecha_compra", "symbol", "cantidad_acciones", "valor_compra", 
-                      "precio_actual", "valor_total", "valor_actual", 
-                      "ganancia_perdida", "porcentaje"]
-    direcciones_validas = ["asc", "desc"]
-
-    if orden_campo not in campos_validos:
-        orden_campo = "fecha_compra"
-    if orden_direccion not in direcciones_validas:
-        orden_direccion = "asc"
-
-    conn = sqlite3.connect("precios.db")
-    cursor = conn.cursor()
-
-    query = """
-    SELECT fecha_compra, symbol, cantidad_acciones, valor_compra, precio_actual, 
-           valor_total, valor_actual, ganancia_perdida, porcentaje
-    FROM historial_compras
-    WHERE 1=1
-    """
-    params = []
-
-    if fecha_inicio:
-        query += " AND fecha_compra >= ?"
-        params.append(fecha_inicio)
-    
-    if fecha_fin:
-        query += " AND fecha_compra <= ?"
-        params.append(fecha_fin)
-
-    query += f" ORDER BY {orden_campo} {orden_direccion.upper()}"
-    
-    cursor.execute(query, params)
-    historial = cursor.fetchall()
-    conn.close()
-
-    return [
-        {
-            "fecha_compra": registro[0],
-            "symbol": registro[1],
-            "cantidad_acciones": registro[2],
-            "valor_compra": registro[3],
-            "precio_actual": registro[4],
-            "valor_total": registro[5],
-            "valor_actual": registro[6],
-            "ganancia_perdida": registro[7],
-            "porcentaje": registro[8]
-        }
-        for registro in historial
-    ]
 
 # Modificar la ruta principal para manejar los filtros:
 @app.route('/', methods=['GET', 'POST'])
@@ -289,22 +241,6 @@ def obtener_consolidacion():
     finally:
         conn.close()
 
-@app.route('/consolidacion')
-def vista_consolidacion():
-    try:
-        consolidacion = obtener_consolidacion()
-        # Asegurarse de que los valores numéricos sean float
-        for item in consolidacion:
-            item['valor_usd_total'] = float(item['valor_usd_total'])
-            item['ganancia_perdida'] = float(item['ganancia_perdida'])
-            item['porcentaje'] = float(item['porcentaje'])
-            item['precio_actual'] = float(item['precio_actual'])
-            item['precio_costo'] = float(item['precio_costo'])
-        return render_template("consolidacion.html", consolidacion=consolidacion)
-    except Exception as e:
-        flash(f"Error al obtener la consolidación: {str(e)}", "danger")
-        return render_template("consolidacion.html", consolidacion=[])
-    
 if __name__ == "__main__":
     http_server = WSGIServer(('0.0.0.0', 5000), app)
     print("Servidor corriendo en http://127.0.0.1:5000")
